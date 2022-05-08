@@ -140,15 +140,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             match active_menu_item {
                 MenuItem::Tickets => {
                     let tickets_chunks = Layout::default()
-                        .direction(Direction::Horizontal)
+                        .direction(Direction::Vertical)
                         .constraints(
-                            [Constraint::Percentage(20), Constraint::Percentage(80)].as_ref(),
+                            [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
                         )
                         .split(chunks[1]);
-                    let (left, right, descript) = render_tickets(&ticket_list_state);
+                    let (left, right) = render_tickets(&ticket_list_state);
                     rect.render_stateful_widget(left, tickets_chunks[0], &mut ticket_list_state);
                     rect.render_widget(right, tickets_chunks[1]);
-                    rect.render_widget(descript, chunks[2]);
+                    //rect.render_widget(descript, chunks[2]);
                 }
             }
             
@@ -218,7 +218,7 @@ fn render_help<'a>() -> Paragraph<'a> {
     home
 }
 
-fn render_tickets<'a>(ticket_list_state: &ListState) -> (List<'a>, Table<'a>, Paragraph<'a>) {
+fn render_tickets<'a>(ticket_list_state: &ListState) -> (List<'a>, Table<'a>) {
     let tickets = Block::default()
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::White))
@@ -300,17 +300,17 @@ fn render_tickets<'a>(ticket_list_state: &ListState) -> (List<'a>, Table<'a>, Pa
     ]);
     
     
-    let descript = Paragraph::new(description_clone)
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
-            .title("Description")
-            .border_type(BorderType::Plain),
-    );
+    // let descript = Paragraph::new(description_clone)
+    // .alignment(Alignment::Center)
+    // .block(
+    //     Block::default()
+    //         .borders(Borders::ALL)
+    //         .style(Style::default().fg(Color::White))
+    //         .title("Description")
+    //         .border_type(BorderType::Plain),
+    // );
 
-    (list, ticket_detail, descript)
+    (list, ticket_detail)
 }
 
 fn read_db() -> Result<Vec<Tickets>, Error> {
@@ -348,15 +348,14 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
 
 
 
-    let request = Request {
-        action: TicketAction::Create,
-        ticket: new_ticket.clone()
-    };
-
-    client::send_request(request);
+    // let request = Request {
+    //     action: TicketAction::Create,
+    //     ticket: new_ticket.clone()
+    // };
+    //client::send_request(request);
 
     parsed.push(new_ticket);
-    //fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
+    fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
     Ok(parsed)
 }
 
