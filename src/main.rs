@@ -17,12 +17,18 @@ use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Spans},
+    text::{Span, Spans, Text},
     widgets::{
         Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs,
     },
     Terminal
 };
+use unicode_width::UnicodeWidthStr;
+
+enum InputMode {
+    Normal,
+    Editing,
+}
 
 const DB_PATH: &str = "ticketdb.json";
 
@@ -56,7 +62,7 @@ impl From<MenuItem> for usize {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode().expect("raw mode");
-    
+
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
     thread::spawn(move || {
@@ -86,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let menu_titles = vec!["Tickets", "Add", "Update", "Delete", "Quit"];
+    let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit"];
     let mut active_menu_item = MenuItem::Tickets;
     let mut ticket_list_state = ListState::default();
     ticket_list_state.select(Some(0));
@@ -163,6 +169,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     add_ticket
                 ().expect("Cannot add ticket");
                 }
+                KeyCode::Char('e') => {
+                    edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");}
                 KeyCode::Char('d') => {
                     remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
                 }
@@ -318,8 +326,6 @@ fn read_db() -> Result<Vec<Tickets>, Error> {
 
 fn add_ticket() -> Result<Vec<Tickets>, Error> {
 
-
-
     let db_content = fs::read_to_string(DB_PATH)?;
     let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
     let mut max_id = 0;
@@ -340,10 +346,17 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
         updated_at: Utc::now(),
     };
 
-    client::send_request(new_ticket.clone());
+
+
+    let request = Request {
+        action: TicketAction::Create,
+        ticket: new_ticket.clone()
+    };
+
+    client::send_request(request);
 
     parsed.push(new_ticket);
-    fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
+    //fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
     Ok(parsed)
 }
 
@@ -362,20 +375,9 @@ fn remove_ticket_at_index(ticket_list_state: &mut ListState) -> Result<(), Error
     Ok(())
 }
 
-fn create_db() -> Result<(), Error> {
-    //create sample ticket
-    let sample_ticket = Tickets {
-        id: 0,
-        title: "Zabbix Setup".to_owned(),
-        description: "Setup Zabbix".to_owned(),
-        status: TicketStatus::Open.to_owned(),
-        priority: "Low".to_owned(),
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
-    //Add sample ticket to vector
-    //create empty file
-    File::create(DB_PATH)?;
-    fs::write(DB_PATH, &serde_json::to_vec(&sample_ticket)?)?;
-    Ok(())
+pub fn edit_ticket_at_index(ticket_list_state: &mut ListState) -> Result<(), Error> {
+
+Ok(())
+
 }
+

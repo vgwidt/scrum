@@ -7,7 +7,7 @@ use tokio_serde::formats::*;
 use tokio_util::codec::{FramedWrite, LengthDelimitedCodec};
 
 #[tokio::main]
-pub async fn send_request(ticket: Tickets) {
+pub async fn send_request(request: Request) {
     // Bind a server socket
     let socket = TcpStream::connect("127.0.0.1:17653").await.unwrap();
 
@@ -20,7 +20,7 @@ pub async fn send_request(ticket: Tickets) {
 
     // Send the value
     serialized
-        .send(ticket)
+        .send(request)
         .await
         .unwrap()
 }
