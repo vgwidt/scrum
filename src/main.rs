@@ -19,7 +19,7 @@ use tui::{
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
     widgets::{
-        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs,
+        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, TableState,
     },
     Terminal
 };
@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit"];
     let mut active_menu_item = MenuItem::Tickets;
-    let mut ticket_list_state = ListState::default();
+    let mut ticket_list_state = TableState::default();
     ticket_list_state.select(Some(0));
 
     loop {
@@ -218,7 +218,8 @@ fn render_help<'a>() -> Paragraph<'a> {
     home
 }
 
-fn render_tickets<'a>(ticket_list_state: &ListState) -> (List<'a>, Table<'a>) {
+fn render_tickets<'a>(ticket_list_state: &TableState) -> (Table<'a>, Table<'a>) {
+    
     let tickets = Block::default()
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::White))
@@ -226,15 +227,6 @@ fn render_tickets<'a>(ticket_list_state: &ListState) -> (List<'a>, Table<'a>) {
         .border_type(BorderType::Plain);
 
     let ticket_list = read_db().expect("can fetch ticket list");
-    let items: Vec<_> = ticket_list
-        .iter()
-        .map(|ticket| {
-            ListItem::new(Spans::from(vec![Span::styled(
-                ticket.title.clone(),
-                Style::default(),
-            )]))
-        })
-        .collect();
 
     let selected_ticket = ticket_list
         .get(
@@ -245,23 +237,41 @@ fn render_tickets<'a>(ticket_list_state: &ListState) -> (List<'a>, Table<'a>) {
         .expect("exists")
         .clone();
 
-    let list = List::new(items).block(tickets).highlight_style(
-        Style::default()
-            .bg(Color::Yellow)
-            .fg(Color::Black)
-            .add_modifier(Modifier::BOLD),
-    );
+    let header = ["Header1", "Header2"];
+    let rows = ticket_list.iter().enumerate().map(|(i, item)| {
+        Row::new(vec![
+            Cell::from(item.id.to_string()),
+            Cell::from(item.title.clone()),
+            Cell::from(item.created_at.to_string()),
+        ])
+    });
 
-    //clone descript prior to losing ownership
-    let description_clone = selected_ticket.description.clone();
+    let list = Table::new(rows)
+        .block(Block::default().borders(Borders::ALL).title("Tickets"))
+        .style(Style::default().fg(Color::White))
+        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black))
+        .widths(&[
+            Constraint::Percentage(5),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+        ]);
 
-    let ticket_detail = Table::new(vec![Row::new(vec![
+    let ticket_detail = Table::new(vec![
+        Row::new(vec![
+        Cell::from(Span::raw(selected_ticket.id.to_string())),
+        Cell::from(Span::raw(selected_ticket.title.clone())),
+        Cell::from(Span::raw(selected_ticket.description.clone())),
+        Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
+        Cell::from(Span::raw(selected_ticket.created_at.to_string())),
+    ]),
+    Row::new(vec![
         Cell::from(Span::raw(selected_ticket.id.to_string())),
         Cell::from(Span::raw(selected_ticket.title)),
         Cell::from(Span::raw(selected_ticket.description)),
         Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
         Cell::from(Span::raw(selected_ticket.created_at.to_string())),
-    ])])
+    ])
+    ])
     .header(Row::new(vec![
         Cell::from(Span::styled(
             "ID",
@@ -359,7 +369,7 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
     Ok(parsed)
 }
 
-fn remove_ticket_at_index(ticket_list_state: &mut ListState) -> Result<(), Error> {
+fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
     if let Some(selected) = ticket_list_state.selected() {
         if selected != 0 {
         let db_content = fs::read_to_string(DB_PATH)?;
@@ -374,7 +384,7 @@ fn remove_ticket_at_index(ticket_list_state: &mut ListState) -> Result<(), Error
     Ok(())
 }
 
-pub fn edit_ticket_at_index(ticket_list_state: &mut ListState) -> Result<(), Error> {
+pub fn edit_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
 
 Ok(())
 
