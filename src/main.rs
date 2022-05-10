@@ -81,13 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     //Count tickets with status of "Open"
-    for ticket in &app.ticket_list {
-        if ticket.status.to_string() == "Open" { //FIX!
-            app.open_count += 1;
-        } else if ticket.status.to_string() == "Closed" {
-            app.closed_count += 1;
-        }
-    }
+    update_ticket_count(&mut app);
 
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
@@ -203,6 +197,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('a') => {
                     add_ticket().expect("Cannot add ticket");
                     app.ticket_list = read_db()?;
+                    update_ticket_count(&mut app);
                 }
                 KeyCode::Char('e') => {
                     app.active_menu_item = MenuItem::EditForm;
@@ -211,6 +206,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('d') => {
                     remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
                     app.ticket_list = read_db()?;
+                    update_ticket_count(&mut app);
                 }
                 KeyCode::Char('c') => {
                     app.ticket_view_mode = TicketViewMode::Closed;
@@ -518,4 +514,23 @@ fn render_edit_form<'a>(ticket_list_state: &TableState, app: &'a AppState) -> Pa
                 .border_type(BorderType::Plain),
         ) 
     
+}
+
+
+fn update_ticket_count(app: &mut AppState) {
+    
+    //Currently reiterates through all the tickets
+    //Will be more efficient to increment count when added or deleted
+
+    app.open_count = 0;
+    app.closed_count = 0;
+
+    for ticket in &app.ticket_list {
+        if ticket.status.to_string() == "Open" { //FIX!
+            app.open_count += 1;
+        } else if ticket.status.to_string() == "Closed" {
+            app.closed_count += 1;
+        }
+    }
+
 }
