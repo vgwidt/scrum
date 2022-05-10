@@ -23,11 +23,15 @@ use tui::{
     },
     Terminal
 };
-use unicode_width::UnicodeWidthStr;
 
 enum InputMode {
     Normal,
     Editing,
+}
+
+enum TicketViewMode {
+    Open,
+    Closed,
 }
 
 const DB_PATH: &str = "ticketdb.json";
@@ -45,7 +49,10 @@ enum Event<I> {
     Tick,
 }
 
-
+struct AppState {
+    input_mode: InputMode,
+    ticket_view_mode: TicketViewMode,
+}
 
 #[derive(Copy, Clone, Debug)]
 enum MenuItem {
@@ -61,7 +68,13 @@ impl From<MenuItem> for usize {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    
     enable_raw_mode().expect("raw mode");
+
+    let mut app = AppState {
+        input_mode: InputMode::Normal,
+        ticket_view_mode: TicketViewMode::Open,
+    };
 
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
@@ -92,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit"];
+    let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit", "Opened Tickets", "Closed Tickets"];
     let mut active_menu_item = MenuItem::Tickets;
     let mut ticket_list_state = TableState::default();
     ticket_list_state.select(Some(0));
@@ -145,10 +158,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
                         )
                         .split(chunks[1]);
-                    let (left, right) = render_tickets(&ticket_list_state);
+                    let (left, right) = render_tickets(&ticket_list_state, &app);
                     rect.render_stateful_widget(left, tickets_chunks[0], &mut ticket_list_state);
                     rect.render_widget(right, tickets_chunks[1]);
-                    //rect.render_widget(descript, chunks[2]);
                 }
             }
             
@@ -173,6 +185,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");}
                 KeyCode::Char('d') => {
                     remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
+                }
+                KeyCode::Char('c') => {
+                    app.ticket_view_mode = TicketViewMode::Closed;
+                }
+                KeyCode::Char('o') => {
+                    app.ticket_view_mode = TicketViewMode::Open;
                 }
                 KeyCode::Down => {
                     if let Some(selected) = ticket_list_state.selected() {
@@ -218,17 +236,30 @@ fn render_help<'a>() -> Paragraph<'a> {
     home
 }
 
-fn render_tickets<'a>(ticket_list_state: &TableState) -> (Table<'a>, Table<'a>) {
+fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<'a>, Table<'a>) {
     
-    let tickets = Block::default()
-        .borders(Borders::ALL)
-        .style(Style::default().fg(Color::White))
-        .title("Tickets")
-        .border_type(BorderType::Plain);
-
     let ticket_list = read_db().expect("can fetch ticket list");
 
-    let selected_ticket = ticket_list
+    //Sort tickets by status
+    let mut tickets = Vec::new();
+    match app.ticket_view_mode {
+        TicketViewMode::Open => {
+            for ticket in ticket_list {
+                if ticket.status.to_string() == "Open" { //FIX THIS!
+                    tickets.push(ticket);
+                }
+            }
+        }
+        TicketViewMode::Closed => {
+            for ticket in ticket_list {
+                if ticket.status.to_string() == "Closed" { //FIX THIS!
+                    tickets.push(ticket);
+                }
+            }
+        }
+    }
+    
+    let selected_ticket = tickets
         .get(
             ticket_list_state
                 .selected()
@@ -237,12 +268,13 @@ fn render_tickets<'a>(ticket_list_state: &TableState) -> (Table<'a>, Table<'a>) 
         .expect("exists")
         .clone();
 
-    let header = ["Header1", "Header2"];
-    let rows = ticket_list.iter().enumerate().map(|(i, item)| {
+    let rows = tickets.iter().enumerate().map(|(i, item)| {
         Row::new(vec![
             Cell::from(item.id.to_string()),
             Cell::from(item.title.clone()),
-            Cell::from(item.created_at.to_string()),
+            Cell::from(item.created_at.format("%Y-%m-%d %H:%M").to_string()),
+            Cell::from(item.updated_at.format("%Y-%m-%d %H:%M").to_string()),
+            Cell::from(item.priority.to_string()),
         ])
     });
 
@@ -250,10 +282,34 @@ fn render_tickets<'a>(ticket_list_state: &TableState) -> (Table<'a>, Table<'a>) 
         .block(Block::default().borders(Borders::ALL).title("Tickets"))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black))
+        .header(Row::new(vec![
+            Cell::from(Span::styled(
+                "ID",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Cell::from(Span::styled(
+                "Title",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Cell::from(Span::styled(
+                "Creation Date",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Cell::from(Span::styled(
+                "Last Updated",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Cell::from(Span::styled(
+                "Priority",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+        ]))
         .widths(&[
-            Constraint::Percentage(5),
+            Constraint::Percentage(10),
+            Constraint::Percentage(38),
             Constraint::Percentage(20),
             Constraint::Percentage(20),
+            Constraint::Percentage(12),
         ]);
 
     let ticket_detail = Table::new(vec![
@@ -264,13 +320,6 @@ fn render_tickets<'a>(ticket_list_state: &TableState) -> (Table<'a>, Table<'a>) 
         Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
         Cell::from(Span::raw(selected_ticket.created_at.to_string())),
     ]),
-    Row::new(vec![
-        Cell::from(Span::raw(selected_ticket.id.to_string())),
-        Cell::from(Span::raw(selected_ticket.title)),
-        Cell::from(Span::raw(selected_ticket.description)),
-        Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
-        Cell::from(Span::raw(selected_ticket.created_at.to_string())),
-    ])
     ])
     .header(Row::new(vec![
         Cell::from(Span::styled(
