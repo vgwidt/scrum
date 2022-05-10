@@ -24,16 +24,6 @@ use tui::{
     Terminal
 };
 
-enum InputMode {
-    Normal,
-    Editing,
-}
-
-enum TicketViewMode {
-    Open,
-    Closed,
-}
-
 const DB_PATH: &str = "ticketdb.json";
 
 #[derive(Error, Debug)]
@@ -53,16 +43,27 @@ struct AppState {
     input_mode: InputMode,
     ticket_view_mode: TicketViewMode,
 }
+enum InputMode {
+    Normal,
+    Editing,
+}
+
+enum TicketViewMode {
+    Open,
+    Closed,
+}
 
 #[derive(Copy, Clone, Debug)]
 enum MenuItem {
     Tickets,
+    EditForm,
 }
 
 impl From<MenuItem> for usize {
     fn from(input: MenuItem) -> usize {
         match input {
             MenuItem::Tickets => 0,
+            MenuItem::EditForm => 1,
         }
     }
 }
@@ -162,6 +163,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     rect.render_stateful_widget(left, tickets_chunks[0], &mut ticket_list_state);
                     rect.render_widget(right, tickets_chunks[1]);
                 }
+                MenuItem::EditForm => {
+                    let edit_form_chunks = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints(
+                            [Constraint::Percentage(100), Constraint::Percentage(0)].as_ref(),
+                        )
+                        .split(chunks[1]);
+                 //   let edit_form = render_edit_form(&app);
+                 //   rect.render_widget(edit_form, edit_form_chunks[0]);
+                }
             }
             
         })?;
@@ -182,6 +193,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ().expect("Cannot add ticket");
                 }
                 KeyCode::Char('e') => {
+                    app.input_mode = InputMode::Editing;
                     edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");}
                 KeyCode::Char('d') => {
                     remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
@@ -191,6 +203,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 KeyCode::Char('o') => {
                     app.ticket_view_mode = TicketViewMode::Open;
+                }
+                KeyCode::Char('s') => {
+                    //save
+                    app.input_mode = InputMode::Normal;
                 }
                 KeyCode::Down => {
                     if let Some(selected) = ticket_list_state.selected() {
@@ -358,17 +374,6 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
         Constraint::Percentage(20),
     ]);
     
-    
-    // let descript = Paragraph::new(description_clone)
-    // .alignment(Alignment::Center)
-    // .block(
-    //     Block::default()
-    //         .borders(Borders::ALL)
-    //         .style(Style::default().fg(Color::White))
-    //         .title("Description")
-    //         .border_type(BorderType::Plain),
-    // );
-
     (list, ticket_detail)
 }
 
@@ -395,7 +400,6 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
     }
 
     let new_ticket = Tickets {
-        //id: rng.gen_range(0..9999999),
         id: max_id + 1,
         title: "Zabbix Setup".to_owned(),
         description: "Setup Zabbix".to_owned(),
@@ -404,8 +408,6 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };
-
-
 
     // let request = Request {
     //     action: TicketAction::Create,
@@ -434,8 +436,60 @@ fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Erro
 }
 
 pub fn edit_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
-
+    if let Some(selected) = ticket_list_state.selected() {
+        if selected != 0 {
+            let db_content = fs::read_to_string(DB_PATH)?;
+            let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
+            let ticket = &mut parsed[selected];
+            render_edit_form(ticket);
+        }
+    }
+    
 Ok(())
 
 }
 
+fn render_edit_form<'a>(ticket: &'a Tickets) -> Paragraph<'a> {
+    let mut text = vec![Spans::from(vec![
+        Span::raw("Title:" ),
+        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
+        Span::raw(ticket.title.clone()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Description:" ),
+        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
+        Span::raw(ticket.description.clone()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Status:" ),
+        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
+        Span::raw(ticket.status.to_string()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Priority:" ),
+        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
+        Span::raw(ticket.priority.clone()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Created At:" ),
+        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
+        Span::raw(ticket.created_at.to_string()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Updated At:" ),
+        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
+        Span::raw(ticket.updated_at.to_string()),
+    ]),
+    ];
+
+    Paragraph::new(text)
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::White))
+                .title("Ticket")
+                .border_type(BorderType::Plain),
+        ) 
+    
+}
