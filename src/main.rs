@@ -40,12 +40,9 @@ enum Event<I> {
 }
 
 struct AppState {
-    input_mode: InputMode,
     ticket_view_mode: TicketViewMode,
-}
-enum InputMode {
-    Normal,
-    Editing,
+    active_menu_item: MenuItem,
+    ticket_list: Vec<Tickets>,
 }
 
 enum TicketViewMode {
@@ -73,8 +70,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode().expect("raw mode");
 
     let mut app = AppState {
-        input_mode: InputMode::Normal,
         ticket_view_mode: TicketViewMode::Open,
+        active_menu_item: MenuItem::Tickets,
+        ticket_list: read_db()?,
     };
 
     let (tx, rx) = mpsc::channel();
@@ -107,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear()?;
 
     let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit", "Opened Tickets", "Closed Tickets"];
-    let mut active_menu_item = MenuItem::Tickets;
+    //let mut active_menu_item = MenuItem::Tickets;
     let mut ticket_list_state = TableState::default();
     ticket_list_state.select(Some(0));
 
@@ -144,14 +142,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect();
 
             let tabs = Tabs::new(menu)
-                .select(active_menu_item.into())
+                .select(app.active_menu_item.into())
                 .block(Block::default().title("Menu").borders(Borders::ALL))
                 .style(Style::default().fg(Color::White))
                 .highlight_style(Style::default().fg(Color::LightYellow))
                 .divider(Span::raw("|"));
 
             rect.render_widget(tabs, chunks[0]);
-            match active_menu_item {
+            match app.active_menu_item {
                 MenuItem::Tickets => {
                     let tickets_chunks = Layout::default()
                         .direction(Direction::Vertical)
@@ -170,8 +168,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             [Constraint::Percentage(100), Constraint::Percentage(0)].as_ref(),
                         )
                         .split(chunks[1]);
-                 //   let edit_form = render_edit_form(&app);
-                 //   rect.render_widget(edit_form, edit_form_chunks[0]);
+                    let edit_form = render_edit_form(&ticket_list_state, &app);
+                    rect.render_widget(edit_form, edit_form_chunks[0]);
                 }
             }
             
@@ -187,16 +185,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     execute!(stdout, LeaveAlternateScreen)?;
                     break;
                 }
-                KeyCode::Char('t') => active_menu_item = MenuItem::Tickets,
+                KeyCode::Char('t') => app.active_menu_item = MenuItem::Tickets,
                 KeyCode::Char('a') => {
-                    add_ticket
-                ().expect("Cannot add ticket");
+                    add_ticket().expect("Cannot add ticket");
+                    app.ticket_list = read_db()?;
                 }
                 KeyCode::Char('e') => {
-                    app.input_mode = InputMode::Editing;
-                    edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");}
+                    app.active_menu_item = MenuItem::EditForm;
+                    //edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");
+                }
                 KeyCode::Char('d') => {
                     remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
+                    app.ticket_list = read_db()?;
                 }
                 KeyCode::Char('c') => {
                     app.ticket_view_mode = TicketViewMode::Closed;
@@ -206,7 +206,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 KeyCode::Char('s') => {
                     //save
-                    app.input_mode = InputMode::Normal;
                 }
                 KeyCode::Down => {
                     if let Some(selected) = ticket_list_state.selected() {
@@ -237,24 +236,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn render_help<'a>() -> Paragraph<'a> {
-    let home = Paragraph::new(vec![
-        Spans::from(vec![Span::raw("Scrum")]),
-    ])
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
-            .title("Home")
-            .border_type(BorderType::Plain),
-    );
-    home
-}
-
 fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<'a>, Table<'a>) {
     
-    let ticket_list = read_db().expect("can fetch ticket list");
+    //let ticket_list = read_db().expect("can fetch ticket list");
+    let ticket_list = app.ticket_list.clone();
 
     //Sort tickets by status
     let mut tickets = Vec::new();
@@ -432,24 +417,31 @@ fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Erro
              ticket_list_state.select(Some(selected - 1));
         }
     }
+
     Ok(())
 }
 
-pub fn edit_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
-    if let Some(selected) = ticket_list_state.selected() {
-        if selected != 0 {
-            let db_content = fs::read_to_string(DB_PATH)?;
-            let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
-            let ticket = &mut parsed[selected];
-            render_edit_form(ticket);
-        }
-    }
+// pub fn edit_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
+//     if let Some(selected) = ticket_list_state.selected() {
+//         if selected != 0 {
+//             let db_content = fs::read_to_string(DB_PATH)?;
+//             let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
+//             let ticket = &mut parsed[selected];
+//             render_edit_form(ticket);
+//         }
+//     }
     
-Ok(())
+// Ok(())
 
-}
+// }
 
-fn render_edit_form<'a>(ticket: &'a Tickets) -> Paragraph<'a> {
+fn render_edit_form<'a>(ticket_list_state: &TableState, app: &'a AppState) -> Paragraph<'a> {
+        
+    //Get ticket at selected index
+    let selected = ticket_list_state.selected().unwrap();
+    let ticket = &app.ticket_list[selected];
+
+
     let mut text = vec![Spans::from(vec![
         Span::raw("Title:" ),
         Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
