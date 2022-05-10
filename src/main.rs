@@ -43,8 +43,11 @@ struct AppState {
     ticket_view_mode: TicketViewMode,
     active_menu_item: MenuItem,
     ticket_list: Vec<Tickets>,
+    open_count: i32,
+    closed_count: i32,
 }
 
+#[derive(PartialEq)]
 enum TicketViewMode {
     Open,
     Closed,
@@ -73,7 +76,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ticket_view_mode: TicketViewMode::Open,
         active_menu_item: MenuItem::Tickets,
         ticket_list: read_db()?,
+        open_count: 0,
+        closed_count: 0,
     };
+
+    //Count tickets with status of "Open"
+    for ticket in &app.ticket_list {
+        if ticket.status.to_string() == "Open" { //FIX!
+            app.open_count += 1;
+        } else if ticket.status.to_string() == "Closed" {
+            app.closed_count += 1;
+        }
+    }
 
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
@@ -200,17 +214,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 KeyCode::Char('c') => {
                     app.ticket_view_mode = TicketViewMode::Closed;
+                    //set index to 0 to prevent crash
+                    ticket_list_state.select(Some(0));
                 }
                 KeyCode::Char('o') => {
                     app.ticket_view_mode = TicketViewMode::Open;
+                    //set index to 0 to prevent crash
+                    ticket_list_state.select(Some(0));
                 }
                 KeyCode::Char('s') => {
                     //save
                 }
                 KeyCode::Down => {
                     if let Some(selected) = ticket_list_state.selected() {
-                        let amount_tickets = read_db().expect("Cannot pull tickets").len();
-                        if selected >= amount_tickets - 1 {
+                        
+                        let mut amount_tickets = 0;
+
+                        if app.ticket_view_mode == TicketViewMode::Open {
+                            amount_tickets = app.open_count;
+                        } else if app.ticket_view_mode == TicketViewMode::Closed {
+                            amount_tickets = app.closed_count;
+                        }
+                        
+                        if selected >= (amount_tickets - 1).try_into().unwrap() {
                             ticket_list_state.select(Some(0));
                         } else {
                             ticket_list_state.select(Some(selected + 1));                            
@@ -219,11 +245,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 KeyCode::Up => {
                     if let Some(selected) = ticket_list_state.selected() {
-                        let amount_tickets = read_db().expect("Cannot pull tickets").len();
+
+                        let mut amount_tickets = 0;
+
+                        if app.ticket_view_mode == TicketViewMode::Open {
+                            amount_tickets = app.open_count;
+                        } else if app.ticket_view_mode == TicketViewMode::Closed {
+                            amount_tickets = app.closed_count;
+                        }
+
                         if selected > 0 {
                             ticket_list_state.select(Some(selected - 1));
                         } else {
-                            ticket_list_state.select(Some(amount_tickets - 1));
+                            ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                         }
                     }
                 }
