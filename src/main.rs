@@ -195,18 +195,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 KeyCode::Char('t') => app.active_menu_item = MenuItem::Tickets,
                 KeyCode::Char('a') => {
-                    add_ticket().expect("Cannot add ticket");
-                    app.ticket_list = read_db()?;
-                    update_ticket_count(&mut app);
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
+                        add_ticket().expect("Cannot add ticket");
+                        app.ticket_list = read_db()?;
+                        update_ticket_count(&mut app);
+                    }
+                        _ => {}
                 }
+            }
                 KeyCode::Char('e') => {
                     app.active_menu_item = MenuItem::EditForm;
                     //edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");
                 }
                 KeyCode::Char('d') => {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
                     remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
                     app.ticket_list = read_db()?;
                     update_ticket_count(&mut app);
+                }
+                _ => {}
+                }
                 }
                 KeyCode::Char('c') => {
                     app.ticket_view_mode = TicketViewMode::Closed;
