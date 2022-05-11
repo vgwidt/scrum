@@ -45,6 +45,7 @@ struct AppState {
     ticket_list: Vec<Tickets>,
     open_count: i32,
     closed_count: i32,
+    ticket_list_state: TableState,
 }
 
 #[derive(PartialEq)]
@@ -78,6 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ticket_list: read_db()?,
         open_count: 0,
         closed_count: 0,
+        ticket_list_state: TableState::default(),
     };
 
     //Count tickets with status of "Open"
@@ -114,8 +116,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit", "Opened Tickets", "Closed Tickets"];
     //let mut active_menu_item = MenuItem::Tickets;
-    let mut ticket_list_state = TableState::default();
-    ticket_list_state.select(Some(0));
+    //let mut ticket_list_state = TableState::default();
+    app.ticket_list_state.select(Some(0));
 
     loop {
         terminal.draw(|rect| {
@@ -165,8 +167,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
                         )
                         .split(chunks[1]);
-                    let (left, right) = render_tickets(&ticket_list_state, &app);
-                    rect.render_stateful_widget(left, tickets_chunks[0], &mut ticket_list_state);
+                    let (left, right) = render_tickets(&app.ticket_list_state, &app);
+                    rect.render_stateful_widget(left, tickets_chunks[0], &mut app.ticket_list_state);
                     rect.render_widget(right, tickets_chunks[1]);
                 }
                 MenuItem::EditForm => {
@@ -176,7 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             [Constraint::Percentage(100), Constraint::Percentage(0)].as_ref(),
                         )
                         .split(chunks[1]);
-                    let edit_form = render_edit_form(&ticket_list_state, &app);
+                    let edit_form = render_edit_form(&app.ticket_list_state, &app);
                     rect.render_widget(edit_form, edit_form_chunks[0]);
                 }
             }
@@ -206,12 +208,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
                 KeyCode::Char('e') => {
                     app.active_menu_item = MenuItem::EditForm;
-                    //edit_ticket_at_index(&mut ticket_list_state).expect("Cannot edit ticket");
+                    //edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
                 }
                 KeyCode::Char('d') => {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
-                    remove_ticket_at_index(&mut ticket_list_state).expect("Cannot remove ticket");
+                    remove_ticket_at_index(&mut app.ticket_list_state).expect("Cannot remove ticket");
                     app.ticket_list = read_db()?;
                     update_ticket_count(&mut app);
                 }
@@ -221,18 +223,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('c') => {
                     app.ticket_view_mode = TicketViewMode::Closed;
                     //set index to 0 to prevent crash
-                    ticket_list_state.select(Some(0));
+                    app.ticket_list_state.select(Some(0));
                 }
                 KeyCode::Char('o') => {
                     app.ticket_view_mode = TicketViewMode::Open;
                     //set index to 0 to prevent crash
-                    ticket_list_state.select(Some(0));
+                    app.ticket_list_state.select(Some(0));
                 }
                 KeyCode::Char('s') => {
                     //save
                 }
                 KeyCode::Down => {
-                    if let Some(selected) = ticket_list_state.selected() {
+                    if let Some(selected) = app.ticket_list_state.selected() {
                         
                         let mut amount_tickets = 0;
 
@@ -243,14 +245,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         
                         if selected >= (amount_tickets - 1).try_into().unwrap() {
-                            ticket_list_state.select(Some(0));
+                            app.ticket_list_state.select(Some(0));
                         } else {
-                            ticket_list_state.select(Some(selected + 1));                            
+                            app.ticket_list_state.select(Some(selected + 1));                            
                         }
                     }
                 }
                 KeyCode::Up => {
-                    if let Some(selected) = ticket_list_state.selected() {
+                    if let Some(selected) = app.ticket_list_state.selected() {
 
                         let mut amount_tickets = 0;
 
@@ -261,9 +263,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
 
                         if selected > 0 {
-                            ticket_list_state.select(Some(selected - 1));
+                            app.ticket_list_state.select(Some(selected - 1));
                         } else {
-                            ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
+                            app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                         }
                     }
                 }
@@ -461,13 +463,13 @@ fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Erro
     Ok(())
 }
 
-// pub fn edit_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
-//     if let Some(selected) = ticket_list_state.selected() {
+// pub fn edit_ticket_at_index(app: &AppState) -> Result<(), Error> {
+//     if let Some(selected) = app.ticket_list_state.selected() {
 //         if selected != 0 {
 //             let db_content = fs::read_to_string(DB_PATH)?;
 //             let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
 //             let ticket = &mut parsed[selected];
-//             render_edit_form(ticket);
+//             render_edit_form();
 //         }
 //     }
     
