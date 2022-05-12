@@ -1,4 +1,5 @@
 mod client;
+mod db;
 
 use chrono::prelude::*;
 use crossterm::{
@@ -7,12 +8,10 @@ use crossterm::{
 };
 use serde::{Deserialize, Serialize};
 use scrum_lib::*;
-use std::{fs::{self, File}, process::exit};
 use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-use thiserror::Error;
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -23,16 +22,7 @@ use tui::{
     },
     Terminal
 };
-
-const DB_PATH: &str = "ticketdb.json";
-
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("error reading the DB file: {0}")]
-    ReadDBError(#[from] io::Error),
-    #[error("error parsing the DB file: {0}")]
-    ParseDBError(#[from] serde_json::Error),
-}
+use db::*;
 
 enum Event<I> {
     Input(I),
@@ -82,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ticket_list_state: TableState::default(),
     };
 
-    //Count tickets with status of "Open"
+    //Count tickets and store in app
     update_ticket_count(&mut app);
 
     let (tx, rx) = mpsc::channel();
@@ -114,9 +104,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Quit", "Opened Tickets", "Closed Tickets"];
-    //let mut active_menu_item = MenuItem::Tickets;
-    //let mut ticket_list_state = TableState::default();
+    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "Quit"];
+    let edit_menu_titles = vec!["Save", "Cancel", "Quit"]; //Convert to const?
+    let mut menu_titles = &ticket_menu_titles;
+
     app.ticket_list_state.select(Some(0));
 
     loop {
@@ -135,6 +126,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .split(size);
 
+            match app.active_menu_item {
+                MenuItem::Tickets => {
+                    menu_titles = &ticket_menu_titles;
+                }
+                MenuItem::EditForm => {
+                    menu_titles = &edit_menu_titles;
+                }     
+            }
             let menu = menu_titles
                 .iter()
                 .map(|t| {
@@ -220,20 +219,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
                 }
                 }
-                KeyCode::Char('c') => {
-                    app.ticket_view_mode = TicketViewMode::Closed;
-                    //set index to 0 to prevent crash
-                    app.ticket_list_state.select(Some(0));
+                KeyCode::Char('2') => {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
+                            app.ticket_view_mode = TicketViewMode::Closed;
+                            //set index to 0 to prevent crash
+                            app.ticket_list_state.select(Some(0));
+                        }
+                        _ => {}
+                    }
+
                 }
-                KeyCode::Char('o') => {
+                KeyCode::Char('1') => {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
                     app.ticket_view_mode = TicketViewMode::Open;
                     //set index to 0 to prevent crash
                     app.ticket_list_state.select(Some(0));
+                        }
+                        _ => {}
+                    }
                 }
                 KeyCode::Char('s') => {
                     //save
                 }
                 KeyCode::Down => {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
                     if let Some(selected) = app.ticket_list_state.selected() {
                         
                         let mut amount_tickets = 0;
@@ -251,7 +263,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
+                        _ => {}
+               }
+                }
                 KeyCode::Up => {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
                     if let Some(selected) = app.ticket_list_state.selected() {
 
                         let mut amount_tickets = 0;
@@ -269,6 +286,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
+                        _ => {}
+               }
+                }
+                KeyCode::Char('c') => {
+
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
+                        }
+                        MenuItem::EditForm => {
+                            app.active_menu_item = MenuItem::Tickets;
+                        }
+                    }
+                }
+                KeyCode::Char('[')=> {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
+                    //Close selected ticket
+                    if let Some(selected) = app.ticket_list_state.selected() {
+                        app.ticket_list[selected].status = TicketStatus::Closed;
+
+                        update_ticket_count(&mut app);
+                        write_changes(&app.ticket_list)?;
+                    }
+                }
+                        _ => {}
+                    }
+                }
+                KeyCode::Char(']')=> {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
+                    //Open selected ticket
+                    if let Some(selected) = app.ticket_list_state.selected() {
+                        app.ticket_list[selected].status = TicketStatus::Open;
+
+                        update_ticket_count(&mut app);
+                        write_changes(&app.ticket_list)?;
+                    }
+                }
+                        _ => {}
+                    }
+                }
                 _ => {}
             },
             Event::Tick => {}
@@ -277,6 +335,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
 
 fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<'a>, Table<'a>) {
     
@@ -301,7 +360,20 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
             }
         }
     }
-    
+
+
+    let mut selected_ticket = Tickets {
+        id: 0,
+        title: "Zabbix Setup".to_owned(),
+        description: "Setup Zabbix".to_owned(),
+        status: TicketStatus::Open,
+        priority: "Low".to_owned(),
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+
+    //If there is at least ticket
+    if tickets.len() > 0 {
     let selected_ticket = tickets
         .get(
             ticket_list_state
@@ -310,6 +382,7 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
         )
         .expect("exists")
         .clone();
+    }
 
     let rows = tickets.iter().enumerate().map(|(i, item)| {
         Row::new(vec![
@@ -404,21 +477,9 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
     (list, ticket_detail)
 }
 
-fn read_db() -> Result<Vec<Tickets>, Error> {
-    //if DB exists, read it, otherwise create it
-    // if !DB_PATH.exists() {
-    //     let _ = create_db();
-    // }
-    
-    let db_content = fs::read_to_string(DB_PATH)?;
-    let parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
-    Ok(parsed)
-}
-
 fn add_ticket() -> Result<Vec<Tickets>, Error> {
 
-    let db_content = fs::read_to_string(DB_PATH)?;
-    let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
+    let mut parsed: Vec<Tickets> = read_db().unwrap();
     let mut max_id = 0;
     for ticket in parsed.iter() {
         if ticket.id > max_id {
@@ -443,17 +504,18 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
     //client::send_request(request);
 
     parsed.push(new_ticket);
-    fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
+    write_changes(&parsed);
     Ok(parsed)
 }
+
+
 
 fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
     if let Some(selected) = ticket_list_state.selected() {
         if selected != 0 {
-        let db_content = fs::read_to_string(DB_PATH)?;
-        let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
+        let mut parsed = read_db().unwrap();
         parsed.remove(selected);
-        fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
+        write_changes(&parsed);
         // Only deincrement if ticket ID is not 0
         
              ticket_list_state.select(Some(selected - 1));
