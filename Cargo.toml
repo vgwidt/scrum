@@ -1,5 +1,5 @@
 [package]
-name = "scrum-client"
+name = "scrum"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,5 +17,5 @@ tokio = { version = "1.18.1", features = ["full"] }
 tokio-serde = { version = "0.8", features = ["json"] }
 tokio-util = { version = "0.7.1", features = ["codec"] }
 futures = "0.3.21"
-scrum-lib = { path = "../scrum-lib" }
+scrum-lib = { path = "./scrum-lib" }
 unicode-width = "0.1.9"

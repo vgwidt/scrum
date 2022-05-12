@@ -1,0 +1,17 @@
+[package]
+name = "scrum-server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.18.1", features = ["full"] }
+serde_json = "1.0.81"
+tokio-serde = { version = "0.8", features = ["json"] }
+tokio-util = { version = "0.7.1", features = ["codec"] }
+futures = "0.3.21"
+scrum-lib = { path = "../scrum-lib" }
+chrono = { version = "0.4.19", features = ["serde"] }
+tokio-serde-json = "0.3.0"
+tokio-stream = "0.1.8"
