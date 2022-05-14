@@ -1,14 +1,15 @@
 mod client;
 mod db;
+mod form;
+mod app;
 
 use chrono::prelude::*;
 use crossterm::{
     event::{self, Event as CEvent, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen, EnterAlternateScreen}, execute,
 };
-use serde::{Deserialize, Serialize};
 use scrum_lib::*;
-use std::io;
+use std::io::{self, Write};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -23,6 +24,8 @@ use tui::{
     Terminal
 };
 use db::*;
+use form::*;
+use crate::app::*;
 
 const TICKRATE: u64 = 60000;
 
@@ -31,37 +34,7 @@ enum Event<I> {
     Tick,
 }
 
-struct AppState {
-    ticket_view_mode: TicketViewMode,
-    active_menu_item: MenuItem,
-    open_tickets: Vec<Tickets>,
-    closed_tickets: Vec<Tickets>,
-    open_count: i32,
-    closed_count: i32,
-    ticket_list_state: TableState,
-}
 
-
-#[derive(PartialEq)]
-enum TicketViewMode {
-    Open,
-    Closed,
-}
-
-#[derive(Copy, Clone, Debug)]
-enum MenuItem {
-    Tickets,
-    EditForm,
-}
-
-impl From<MenuItem> for usize {
-    fn from(input: MenuItem) -> usize {
-        match input {
-            MenuItem::Tickets => 0,
-            MenuItem::EditForm => 1,
-        }
-    }
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
@@ -77,8 +50,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ticket_list_state: TableState::default(),
     };
 
-    //Count tickets and store in app
     update_ticket_count(&mut app);
+
 
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(TICKRATE);
@@ -115,6 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     app.ticket_list_state.select(Some(0));
+
 
     loop {
         terminal.draw(|rect| {
@@ -503,13 +477,15 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
 
 fn add_ticket(app: &mut AppState) -> Result<(), Error> {
 
-    let mut parsed: Vec<Tickets> = read_db().unwrap();
+    let parsed: Vec<Tickets> = read_db().unwrap();
     let mut max_id = 0;
     for ticket in parsed.iter() {
         if ticket.id > max_id {
             max_id = ticket.id;
         }
     }
+
+
 
     let new_ticket = Tickets {
         id: max_id + 1,
@@ -593,56 +569,6 @@ fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
 
 // }
 
-fn render_edit_form<'a>(ticket_list_state: &TableState, app: &'a AppState) -> Paragraph<'a> {
-    //Get ticket at selected index
-    let selected = ticket_list_state.selected().unwrap();
-
-    let ticket = &app.open_tickets[selected];
-
-
-    let mut text = vec![Spans::from(vec![
-        Span::raw("Title:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.title.clone()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Description:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.description.clone()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Status:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.status.to_string()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Priority:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.priority.clone()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Created At:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.created_at.to_string()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Updated At:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.updated_at.to_string()),
-    ]),
-    ];
-
-    Paragraph::new(text)
-        .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
-                .title("Ticket")
-                .border_type(BorderType::Plain),
-        ) 
-    
-}
 
 
 fn update_ticket_count(app: &mut AppState) {
