@@ -31,6 +31,17 @@ impl Tickets{
     pub fn prev_id(&self) -> i32{
         self.id - 1
     }
+    pub fn default() -> Tickets{
+        Tickets{
+            id: 0,
+            title: String::from(""),
+            description: String::from(""),
+            status: TicketStatus::Open,
+            priority: String::from(""),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
     
 }
 

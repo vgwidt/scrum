@@ -9,7 +9,8 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen, EnterAlternateScreen}, execute,
 };
 use scrum_lib::*;
-use std::io::{self, Write};
+use unicode_width::UnicodeWidthStr;
+use std::{io::{self, Write}, option};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -46,6 +47,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         open_count: 0,
         closed_count: 0,
         ticket_list_state: TableState::default(),
+        editTicket: Tickets::default(),
+        messages: Vec::new(),
+        input: String::new(),
+        prompt: "Enter Title".to_string(),
     };
 
     update_ticket_count(&mut app);
@@ -155,189 +160,213 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             [Constraint::Percentage(100), Constraint::Percentage(0)].as_ref(),
                         )
                         .split(chunks[1]);
-                    let edit_form = render_edit_form(&app.ticket_list_state, &app);
-                    rect.render_widget(edit_form, edit_form_chunks[0]);
+                    let (input, output) = render_edit_form(&mut app);
+                    rect.render_widget(input, edit_form_chunks[0]);
+                    rect.render_widget(output, edit_form_chunks[1]);
+                    rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
                 }
             }
             
         })?;
 
-        match rx.recv()? {
-            Event::Input(event) => match event.code {
-                KeyCode::Char('q') => {
-                    disable_raw_mode()?;
-                    terminal.show_cursor()?;
-                    terminal.clear()?;
-                    let mut stdout = io::stdout();
-                    execute!(stdout, LeaveAlternateScreen)?;
-                    break;
-                }
-                KeyCode::Char('t') => app.active_menu_item = MenuItem::Tickets,
-                KeyCode::Char('a') => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                        add_ticket(&mut app).expect("Cannot add ticket");
+        match app.active_menu_item{
+            MenuItem::Tickets => {
+                match rx.recv()? {           
+                    Event::Input(event) => match event.code {
+                        KeyCode::Char('q') => {
+                            disable_raw_mode()?;
+                            terminal.show_cursor()?;
+                            terminal.clear()?;
+                            let mut stdout = io::stdout();
+                            execute!(stdout, LeaveAlternateScreen)?;
+                            break;
+                        }
+                        KeyCode::Char('t') => app.active_menu_item = MenuItem::Tickets,
+                        KeyCode::Char('a') => {
+                                init_add_ticket(&mut app).expect("Cannot add ticket");
                     }
+                        KeyCode::Char('e') => {
+                            app.active_menu_item = MenuItem::EditForm;
+                            //edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
+                        }
+                        KeyCode::Char('d') => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                                    remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
+                        }
                         _ => {}
-                }
-            }
-                KeyCode::Char('e') => {
-                    app.active_menu_item = MenuItem::EditForm;
-                    //edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
-                }
-                KeyCode::Char('d') => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                            remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
-                }
-                _ => {}
-                }
-                }
-                KeyCode::Char('2') => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                            app.ticket_view_mode = TicketViewMode::Closed;
+                        }
+                        }
+                        KeyCode::Char('2') => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                                    app.ticket_view_mode = TicketViewMode::Closed;
+                                    //set index to 0 to prevent crash
+                                    app.ticket_list_state.select(Some(0));
+                                }
+                                _ => {}
+                            }
+        
+                        }
+                        KeyCode::Char('1') => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                            app.ticket_view_mode = TicketViewMode::Open;
                             //set index to 0 to prevent crash
                             app.ticket_list_state.select(Some(0));
-                        }
-                        _ => {}
-                    }
-
-                }
-                KeyCode::Char('1') => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                    app.ticket_view_mode = TicketViewMode::Open;
-                    //set index to 0 to prevent crash
-                    app.ticket_list_state.select(Some(0));
-                        }
-                        _ => {}
-                    }
-                }
-                KeyCode::Char('s') => {
-                    //save
-                }
-                KeyCode::Down => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                            //only try if something is selected
-                          
-                    if let Some(selected) = app.ticket_list_state.selected() {
-                        
-                        let mut amount_tickets = 0;
-
-                        if app.ticket_view_mode == TicketViewMode::Open {
-                            amount_tickets = app.open_count;
-                        } else if app.ticket_view_mode == TicketViewMode::Closed {
-                            amount_tickets = app.closed_count;
-                        }
-                        
-                        if amount_tickets == 0 {
-                            continue;
-                        }
-                        if selected >= (amount_tickets - 1).try_into().unwrap() {
-                            app.ticket_list_state.select(Some(0));
-                        } else {
-                            app.ticket_list_state.select(Some(selected + 1));                            
-                        }
-                    
-                }
-                }
-                        _ => {}
-               }
-                }
-                KeyCode::Up => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                            
-                            if let Some(selected) = app.ticket_list_state.selected() {
-
-                        let mut amount_tickets = 0;
-
-                        if app.ticket_view_mode == TicketViewMode::Open {
-                            amount_tickets = app.open_count;
-                        } else if app.ticket_view_mode == TicketViewMode::Closed {
-                            amount_tickets = app.closed_count;
-                        }
-                        if amount_tickets == 0 {
-                            continue;
-                        }
-                        if selected > 0 {
-                            app.ticket_list_state.select(Some(selected - 1));
-                        } else {
-                            app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
-                        }
-                    }
-                
-                }
-                        _ => {}
-               }
-                }
-                KeyCode::Char('c') => {
-
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                        }
-                        MenuItem::EditForm => {
-                            app.active_menu_item = MenuItem::Tickets;
-                        }
-                    }
-                }
-                KeyCode::Char('[')=> {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                    //Close selected ticket
-                    match app.ticket_view_mode {
-                        TicketViewMode::Open => {
-                            if let Some(selected) = app.ticket_list_state.selected() {
-                                app.open_tickets[selected].status = TicketStatus::Closed;
-        
-                                update_ticket_count(&mut app);
-                                update_db(&app);
+                                }
+                                _ => {}
                             }
                         }
-                        TicketViewMode::Closed =>     {                   
+                        KeyCode::Char('s') => {
+                            //save
                         }
-                    }
-
-                }
-                        _ => {}
-                    }
-                }
-                KeyCode::Char(']')=> {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                    //Open selected ticket
-                        match app.ticket_view_mode {
-                            TicketViewMode::Open => {
-                                if let Some(selected) = app.ticket_list_state.selected() {
-                                    app.open_tickets[selected].status = TicketStatus::Open;
-            
-                                    update_ticket_count(&mut app);
-                                    update_db(&app);
+                        KeyCode::Down => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                                    //only try if something is selected
+                                  
+                            if let Some(selected) = app.ticket_list_state.selected() {
+                                
+                                let mut amount_tickets = 0;
+        
+                                if app.ticket_view_mode == TicketViewMode::Open {
+                                    amount_tickets = app.open_count;
+                                } else if app.ticket_view_mode == TicketViewMode::Closed {
+                                    amount_tickets = app.closed_count;
+                                }
+                                
+                                if amount_tickets == 0 {
+                                    continue;
+                                }
+                                if selected >= (amount_tickets - 1).try_into().unwrap() {
+                                    app.ticket_list_state.select(Some(0));
+                                } else {
+                                    app.ticket_list_state.select(Some(selected + 1));                            
+                                }
+                            
+                        }
+                        }
+                                _ => {}
+                       }
+                        }
+                        KeyCode::Up => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                                    
+                                    if let Some(selected) = app.ticket_list_state.selected() {
+        
+                                let mut amount_tickets = 0;
+        
+                                if app.ticket_view_mode == TicketViewMode::Open {
+                                    amount_tickets = app.open_count;
+                                } else if app.ticket_view_mode == TicketViewMode::Closed {
+                                    amount_tickets = app.closed_count;
+                                }
+                                if amount_tickets == 0 {
+                                    continue;
+                                }
+                                if selected > 0 {
+                                    app.ticket_list_state.select(Some(selected - 1));
+                                } else {
+                                    app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                                 }
                             }
-                            TicketViewMode::Closed =>     {                   
+                        
+                        }
+                                _ => {}
+                       }
+                        }
+                        KeyCode::Char('c') => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                                }
+                                MenuItem::EditForm => {
+                                    app.active_menu_item = MenuItem::Tickets;
+                                }
                             }
                         }
-                         }
+                        KeyCode::Char('[')=> { //Close ticket
+                            match app.ticket_view_mode {
+                                TicketViewMode::Open => {
+                                    if let Some(selected) = app.ticket_list_state.selected() {
+                                        app.open_tickets[selected].status = TicketStatus::Closed;
+                
+                                        update_ticket_count(&mut app);
+                                        update_db(&app);
+                                    }
+                                }
+                                TicketViewMode::Closed =>     {                   
+                                }
+                            }                            
+                        }
+                        KeyCode::Char(']')=> {  //Open ticket
+                                match app.ticket_view_mode { //Open selected ticket
+                                    TicketViewMode::Open => {
+                                        if let Some(selected) = app.ticket_list_state.selected() {
+                                            app.open_tickets[selected].status = TicketStatus::Open;
+                    
+                                            update_ticket_count(&mut app);
+                                            update_db(&app);
+                                        }
+                                    }
+                                    TicketViewMode::Closed =>     {                   
+                                    }
+                            }
+                        }
+                        KeyCode::Tab => {
+                            match app.active_menu_item {
+                                MenuItem::Tickets => {
+                                    app.active_menu_item = MenuItem::EditForm;
+                                }
+                                MenuItem::EditForm => {
+                                    //Go to next editable field
+                                }
+                            }
+                        }
                         _ => {}
-                    }
+                    },
+                    Event::Tick => {}
                 }
-                KeyCode::Tab => {
-                    match app.active_menu_item {
-                        MenuItem::Tickets => {
-                            app.active_menu_item = MenuItem::EditForm;
+            }
+            MenuItem::EditForm => {
+                match rx.recv()? {           
+                    Event::Input(event) => match event.code {
+                    KeyCode::Enter => {
+                        app.messages.push(app.input.drain(..).collect());
+                        if app.messages.len() == 1 {
+                            app.prompt = "Enter Description".to_string();
                         }
-                        MenuItem::EditForm => {
-                            //Go to next editable field
+                        else if app.messages.len() == 2 {
+                            app.prompt = "Enter Priority".to_string();
+                        }
+                        else if app.messages.len() == 3 {
+                            app.prompt = "Press F3 to save or Esc to cancel".to_string();
                         }
                     }
+                    KeyCode::Char(c) => {
+                        app.input.push(c);
+                    }
+                    KeyCode::Backspace => {
+                        app.input.pop();
+                    }
+                    KeyCode::Esc => {
+                        //return to Ticket menu without saving
+                        app.active_menu_item = MenuItem::Tickets;
+                        app.input = String::new();
+                        app.messages = Vec::new();
+                    }
+                    //FN3
+                    KeyCode::F(3) => {
+                        add_ticket(&mut app);
+                    }
+                    _ => {}
+                },
+                    Event::Tick => {}
                 }
-                _ => {}
             },
-            Event::Tick => {}
         }
+        
     }
 
     Ok(())
@@ -483,7 +512,51 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
     (list, ticket_detail)
 }
 
-fn add_ticket(app: &mut AppState) -> Result<(), Error> {
+fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
+   
+    let parsed: Vec<Tickets> = read_db().unwrap();
+    let mut max_id = 0;
+    for ticket in parsed.iter() {
+        if ticket.id > max_id {
+            max_id = ticket.id;
+        }
+    }
+    
+    app.editTicket.id = max_id + 1;
+    app.editTicket.status = TicketStatus::Open;
+
+   
+    app.active_menu_item = MenuItem::EditForm;
+    Ok(())
+}
+
+fn add_ticket (app: &mut AppState) -> Result<(), Error> {
+
+    app.editTicket.title = app.messages[0].trim().to_string();
+    app.editTicket.description = app.messages[1].trim().to_string();
+    app.editTicket.priority = app.messages[2].trim().to_string();
+    app.editTicket.created_at = Utc::now();
+    app.editTicket.updated_at = Utc::now();
+
+    app.open_tickets.push(app.editTicket.clone());
+    update_db(&app);
+    update_ticket_count(app);
+    render_tickets(app);
+
+    app.editTicket = Tickets::default();
+
+
+
+    app.input = String::new();
+    app.messages = Vec::new();
+    app.active_menu_item = MenuItem::Tickets;
+
+
+    Ok(())
+}
+
+
+fn add_sample_ticket(app: &mut AppState) -> Result<(), Error> {
 
     let parsed: Vec<Tickets> = read_db().unwrap();
     let mut max_id = 0;
@@ -493,59 +566,19 @@ fn add_ticket(app: &mut AppState) -> Result<(), Error> {
         }
     }
 
-    disable_raw_mode()?;
-    execute!(io::stdout(), EnterAlternateScreen,
-        event::DisableMouseCapture
-    )?;
-    //Ask for ticket details
-    execute!(io::stdout(), crossterm::style::Print("Title: "))?;
-    let mut title = String::new();
-    io::stdin().read_line(&mut title)?;
-    //fstd flush
-    io::stdout().flush()?;
-    title = title.trim().to_string();
-
-    execute!(io::stdout(), crossterm::style::Print("Description: "))?;
-    let mut description = String::new();
-    io::stdin().read_line(&mut description)?;
-    io::stdout().flush()?;
-    description = description.trim().to_string();
-
-    execute!(io::stdout(), crossterm::style::Print("Priority: "))?;
-    let mut priority = String::new();
-    io::stdin().read_line(&mut priority)?;
-    io::stdout().flush()?;
-    priority = priority.trim().to_string();
-        
-
-//return to tui
-    enable_raw_mode()?;
-    execute!(io::stdout(), LeaveAlternateScreen,
-        event::EnableMouseCapture
-    )?;
-
-
-
     let new_ticket = Tickets {
         id: max_id + 1,
-        title: title.to_owned(),
-        description: description.to_owned(),
+        title: "Make Coffee".to_owned(),
+        description: "Extra dark".to_owned(),
         status: TicketStatus::Open,
-        priority: priority.to_owned(),
+        priority: "High".to_owned(),
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };
 
-    // let request = Request {
-    //     action: TicketAction::Create,
-    //     ticket: new_ticket.clone()
-    // };
-    //client::send_request(request);
-
     app.open_tickets.push(new_ticket);
     update_db(&app);
     update_ticket_count(app);
-
     render_tickets(app);
     Ok(())
 }

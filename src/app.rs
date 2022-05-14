@@ -1,5 +1,6 @@
 use std::io::Stdout;
 
+use futures::stream::SelectNextSome;
 use tui::{widgets::TableState, backend::CrosstermBackend, Terminal};
 use crate::Tickets;
 
@@ -11,6 +12,10 @@ pub struct AppState {
     pub open_count: i32,
     pub closed_count: i32,
     pub ticket_list_state: TableState,
+    pub editTicket: Tickets,
+    pub messages: Vec<String>,
+    pub input: String,
+    pub prompt: String,
 }
 
 

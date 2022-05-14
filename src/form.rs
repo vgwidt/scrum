@@ -20,55 +20,35 @@ use tui::{
 use crate::Tickets;
 use crate::app::*;
 
-pub fn render_edit_form<'a>(ticket_list_state: &TableState, app: &'a AppState) -> Paragraph<'a> {
+pub fn render_edit_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) {
     //Get ticket at selected index
-    let selected = ticket_list_state.selected().unwrap();
+    let selected = app.ticket_list_state.selected().unwrap();
 
     let ticket = &app.open_tickets[selected];
 
+    let input1 = Paragraph::new(app.input.as_ref())
+    .style(Style::default().fg(Color::Yellow))
+    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone()));
 
-    let mut text = vec![Spans::from(vec![
-        Span::raw("Title:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.title.clone()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Description:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.description.clone()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Status:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.status.to_string()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Priority:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.priority.clone()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Created At:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.created_at.to_string()),
-    ]),
-    Spans::from(vec![
-        Span::raw("Updated At:" ),
-        Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
-        Span::raw(ticket.updated_at.to_string()),
-    ]),
-    ];
+    let input2 = Paragraph::new(app.input.as_ref())
+    .style(Style::default().fg(Color::Yellow))
+    .block(Block::default().borders(Borders::ALL).title("Input"));
 
-    Paragraph::new(text)
-        .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
-                .title("Ticket")
-                .border_type(BorderType::Plain),
-        ) 
+    let messages: Vec<ListItem> = app
+    .messages
+    .iter()
+    .enumerate()
+    .map(|(i, m)| {
+        let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
+        ListItem::new(content)
+    })
+    .collect();
+    let messages =
+    List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     
+
+(input1, messages)
+
 
         
 }
