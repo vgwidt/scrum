@@ -1,4 +1,6 @@
-use tui::widgets::TableState;
+use std::io::Stdout;
+
+use tui::{widgets::TableState, backend::CrosstermBackend, Terminal};
 use crate::Tickets;
 
 pub struct AppState {

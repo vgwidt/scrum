@@ -38,8 +38,6 @@ enum Event<I> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
-    enable_raw_mode().expect("raw mode");
-
     let mut app = AppState {
         ticket_view_mode: TicketViewMode::Open,
         active_menu_item: MenuItem::Tickets,
@@ -76,6 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    enable_raw_mode().expect("raw mode");
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
@@ -85,7 +84,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "Quit"];
     let edit_menu_titles = vec!["Save", "Cancel", "Quit"]; //Convert to const?
     let mut menu_titles = &ticket_menu_titles;
-
 
     app.ticket_list_state.select(Some(0));
 
@@ -146,7 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
                         )
                         .split(chunks[1]);
-                    let (left, right) = render_tickets(&app.ticket_list_state, &app);
+                    let (left, right) = render_tickets(&app);
                     rect.render_stateful_widget(left, tickets_chunks[0], &mut app.ticket_list_state);
                     rect.render_widget(right, tickets_chunks[1]);
                 }
@@ -326,6 +324,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         _ => {}
                     }
                 }
+                KeyCode::Tab => {
+                    match app.active_menu_item {
+                        MenuItem::Tickets => {
+                            app.active_menu_item = MenuItem::EditForm;
+                        }
+                        MenuItem::EditForm => {
+                            //Go to next editable field
+                        }
+                    }
+                }
                 _ => {}
             },
             Event::Tick => {}
@@ -336,7 +344,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 
-fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<'a>, Table<'a>) {
+fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
     
  
     let mut tickets = Vec::new();
@@ -374,7 +382,7 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
     if tickets.len() > 0 {
     selected_ticket = tickets
         .get(
-            ticket_list_state
+            app.ticket_list_state
                 .selected()
                 .expect("there is always a selected ticket"),
         )
@@ -485,14 +493,45 @@ fn add_ticket(app: &mut AppState) -> Result<(), Error> {
         }
     }
 
+    disable_raw_mode()?;
+    execute!(io::stdout(), EnterAlternateScreen,
+        event::DisableMouseCapture
+    )?;
+    //Ask for ticket details
+    execute!(io::stdout(), crossterm::style::Print("Title: "))?;
+    let mut title = String::new();
+    io::stdin().read_line(&mut title)?;
+    //fstd flush
+    io::stdout().flush()?;
+    title = title.trim().to_string();
+
+    execute!(io::stdout(), crossterm::style::Print("Description: "))?;
+    let mut description = String::new();
+    io::stdin().read_line(&mut description)?;
+    io::stdout().flush()?;
+    description = description.trim().to_string();
+
+    execute!(io::stdout(), crossterm::style::Print("Priority: "))?;
+    let mut priority = String::new();
+    io::stdin().read_line(&mut priority)?;
+    io::stdout().flush()?;
+    priority = priority.trim().to_string();
+        
+
+//return to tui
+    enable_raw_mode()?;
+    execute!(io::stdout(), LeaveAlternateScreen,
+        event::EnableMouseCapture
+    )?;
+
 
 
     let new_ticket = Tickets {
         id: max_id + 1,
-        title: "Zabbix Setup".to_owned(),
-        description: "Setup Zabbix".to_owned(),
+        title: title.to_owned(),
+        description: description.to_owned(),
         status: TicketStatus::Open,
-        priority: "Low".to_owned(),
+        priority: priority.to_owned(),
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };
@@ -506,6 +545,8 @@ fn add_ticket(app: &mut AppState) -> Result<(), Error> {
     app.open_tickets.push(new_ticket);
     update_db(&app);
     update_ticket_count(app);
+
+    render_tickets(app);
     Ok(())
 }
 
