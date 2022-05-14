@@ -11,7 +11,7 @@ use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Spans, Text},
+    text::{Span, Spans, Text, self},
     widgets::{
         Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, TableState,
     },
@@ -21,11 +21,7 @@ use crate::Tickets;
 use crate::app::*;
 
 pub fn render_edit_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) {
-    //Get ticket at selected index
-    let selected = app.ticket_list_state.selected().unwrap();
-
-    let ticket = &app.open_tickets[selected];
-
+    
     let input1 = Paragraph::new(app.input.as_ref())
     .style(Style::default().fg(Color::Yellow))
     .block(Block::default().borders(Borders::ALL).title(app.prompt.clone()));

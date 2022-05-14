@@ -42,6 +42,17 @@ impl Tickets{
             updated_at: Utc::now(),
         }
     }
+    pub fn sample() -> Tickets{
+        Tickets{
+            id: 0,
+            title: String::from("Sample Ticket"),
+            description: String::from("This is a sample description"),
+            status: TicketStatus::Open,
+            priority: String::from("Low"),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
     
 }
 

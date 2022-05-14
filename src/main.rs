@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         open_count: 0,
         closed_count: 0,
         ticket_list_state: TableState::default(),
-        editTicket: Tickets::default(),
+        edit_ticket: Tickets::default(),
         messages: Vec::new(),
         input: String::new(),
         prompt: "Enter Title".to_string(),
@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "Quit"];
+    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "0: Toggle Open/Close", "Quit"];
     let edit_menu_titles = vec!["Save", "Cancel", "Quit"]; //Convert to const?
     let mut menu_titles = &ticket_menu_titles;
 
@@ -163,7 +163,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let (input, output) = render_edit_form(&mut app);
                     rect.render_widget(input, edit_form_chunks[0]);
                     rect.render_widget(output, edit_form_chunks[1]);
-                    rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
+                    //Dangerous, if we add more fields this needs to be changed
+                    if app.messages.len() < 3 {
+                     rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
+                    }
                 }
             }
             
@@ -186,8 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 init_add_ticket(&mut app).expect("Cannot add ticket");
                     }
                         KeyCode::Char('e') => {
-                            app.active_menu_item = MenuItem::EditForm;
-                            //edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
+                            edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
                         }
                         KeyCode::Char('d') => {
                             match app.active_menu_item {
@@ -211,9 +213,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char('1') => {
                             match app.active_menu_item {
                                 MenuItem::Tickets => {
-                            app.ticket_view_mode = TicketViewMode::Open;
-                            //set index to 0 to prevent crash
-                            app.ticket_list_state.select(Some(0));
+                                    app.ticket_view_mode = TicketViewMode::Open;
+                                    //set index to 0 to prevent crash
+                                    app.ticket_list_state.select(Some(0));
                                 }
                                 _ => {}
                             }
@@ -286,33 +288,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                         }
-                        KeyCode::Char('[')=> { //Close ticket
-                            match app.ticket_view_mode {
-                                TicketViewMode::Open => {
-                                    if let Some(selected) = app.ticket_list_state.selected() {
-                                        app.open_tickets[selected].status = TicketStatus::Closed;
-                
-                                        update_ticket_count(&mut app);
-                                        update_db(&app);
-                                    }
-                                }
-                                TicketViewMode::Closed =>     {                   
-                                }
-                            }                            
-                        }
-                        KeyCode::Char(']')=> {  //Open ticket
-                                match app.ticket_view_mode { //Open selected ticket
-                                    TicketViewMode::Open => {
-                                        if let Some(selected) = app.ticket_list_state.selected() {
-                                            app.open_tickets[selected].status = TicketStatus::Open;
-                    
-                                            update_ticket_count(&mut app);
-                                            update_db(&app);
-                                        }
-                                    }
-                                    TicketViewMode::Closed =>     {                   
-                                    }
-                            }
+                        KeyCode::Char('0')=> {
+                           toggle_ticket_status(&mut app).expect("Cannot toggle ticket status");                         
                         }
                         KeyCode::Tab => {
                             match app.active_menu_item {
@@ -336,29 +313,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         app.messages.push(app.input.drain(..).collect());
                         if app.messages.len() == 1 {
                             app.prompt = "Enter Description".to_string();
+                            app.input = app.edit_ticket.description.to_string();
                         }
                         else if app.messages.len() == 2 {
                             app.prompt = "Enter Priority".to_string();
+                            app.input = app.edit_ticket.priority.to_string();
                         }
                         else if app.messages.len() == 3 {
-                            app.prompt = "Press F3 to save or Esc to cancel".to_string();
+                            app.prompt = "Hit Enter to save or Esc to cancel".to_string();
+                            app.input = app.messages[0].clone() + "\n" + &app.messages[1].clone() + "\n" + &app.messages[2].clone();
                         }
+                        else if app.messages.len() >= 3 {
+                            add_ticket(&mut app);
+                            }
                     }
                     KeyCode::Char(c) => {
+                        //Only allow edit up to 3 lines
+                        if app.messages.len() < 3 {
                         app.input.push(c);
+                        }
                     }
                     KeyCode::Backspace => {
+                        //Only allow edit up to 3 lines
+                        if app.messages.len() < 3 {
                         app.input.pop();
+                        }
                     }
                     KeyCode::Esc => {
                         //return to Ticket menu without saving
                         app.active_menu_item = MenuItem::Tickets;
                         app.input = String::new();
                         app.messages = Vec::new();
-                    }
-                    //FN3
-                    KeyCode::F(3) => {
-                        add_ticket(&mut app);
                     }
                     _ => {}
                 },
@@ -387,7 +372,7 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
             }
         }
         TicketViewMode::Closed => {
-            let ticket_list = app.open_tickets.clone();
+            let ticket_list = app.closed_tickets.clone();
             for ticket in ticket_list {
                 if ticket.status.to_string() == "Closed" { //FIX THIS!
                     tickets.push(ticket);
@@ -513,17 +498,9 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
 }
 
 fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
-   
-    let parsed: Vec<Tickets> = read_db().unwrap();
-    let mut max_id = 0;
-    for ticket in parsed.iter() {
-        if ticket.id > max_id {
-            max_id = ticket.id;
-        }
-    }
-    
-    app.editTicket.id = max_id + 1;
-    app.editTicket.status = TicketStatus::Open;
+
+    app.edit_ticket.id = -1337;
+    app.edit_ticket.status = TicketStatus::Open;
 
    
     app.active_menu_item = MenuItem::EditForm;
@@ -531,59 +508,86 @@ fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
 }
 
 fn add_ticket (app: &mut AppState) -> Result<(), Error> {
+    if let Some(selected) = app.ticket_list_state.selected() {
+    //if new
+    if app.edit_ticket.id == -1337 {
+        //Generate unique ID
+        let parsed: Vec<Tickets> = read_db().unwrap();
+        let mut max_id = 0;
+        for ticket in parsed.iter() {
+            if ticket.id > max_id {
+                max_id = ticket.id;
+            }
+        }
+        app.edit_ticket.id = max_id + 1;
 
-    app.editTicket.title = app.messages[0].trim().to_string();
-    app.editTicket.description = app.messages[1].trim().to_string();
-    app.editTicket.priority = app.messages[2].trim().to_string();
-    app.editTicket.created_at = Utc::now();
-    app.editTicket.updated_at = Utc::now();
+        app.edit_ticket.title = app.messages[0].trim().to_string();
+        app.edit_ticket.description = app.messages[1].trim().to_string();
+        app.edit_ticket.priority = app.messages[2].trim().to_string();
+        app.edit_ticket.created_at = Utc::now();
+        app.edit_ticket.updated_at = Utc::now();
 
-    app.open_tickets.push(app.editTicket.clone());
+        app.open_tickets.push(app.edit_ticket.clone());
+
+    } else {
+
+        //replace ticket at selected index
+        app.edit_ticket.title = app.messages[0].trim().to_string();
+        app.edit_ticket.description = app.messages[1].trim().to_string();
+        app.edit_ticket.priority = app.messages[2].trim().to_string();
+        app.edit_ticket.updated_at = Utc::now();
+
+        //Makes sure to update the right index by checking if on open or close page, very inefficient and requires blocking changing in other menus
+        match app.ticket_view_mode {
+            TicketViewMode::Open => {
+                app.open_tickets[selected] = app.edit_ticket.clone();
+            },
+            TicketViewMode::Closed => {
+                app.closed_tickets[selected] = app.edit_ticket.clone();
+            },
+        }    
+    }
+
+
     update_db(&app);
     update_ticket_count(app);
     render_tickets(app);
 
-    app.editTicket = Tickets::default();
-
-
-
+    app.edit_ticket = Tickets::default();
     app.input = String::new();
     app.messages = Vec::new();
     app.active_menu_item = MenuItem::Tickets;
-
-
-    Ok(())
-}
-
-
-fn add_sample_ticket(app: &mut AppState) -> Result<(), Error> {
-
-    let parsed: Vec<Tickets> = read_db().unwrap();
-    let mut max_id = 0;
-    for ticket in parsed.iter() {
-        if ticket.id > max_id {
-            max_id = ticket.id;
-        }
     }
 
-    let new_ticket = Tickets {
-        id: max_id + 1,
-        title: "Make Coffee".to_owned(),
-        description: "Extra dark".to_owned(),
-        status: TicketStatus::Open,
-        priority: "High".to_owned(),
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
-
-    app.open_tickets.push(new_ticket);
-    update_db(&app);
-    update_ticket_count(app);
-    render_tickets(app);
     Ok(())
 }
 
 
+pub fn edit_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
+     if let Some(selected) = app.ticket_list_state.selected() {
+        
+        match app.ticket_view_mode {
+            TicketViewMode::Open => {
+                if app.open_tickets.len() != 0 {
+                    app.edit_ticket = app.open_tickets[selected].clone();
+                    app.input = app.edit_ticket.title.to_string();
+                    app.active_menu_item = MenuItem::EditForm;
+                }
+            },
+            TicketViewMode::Closed => {
+                if app.closed_tickets.len() != 0 {
+                    app.edit_ticket = app.closed_tickets[selected].clone();
+                    app.input = app.edit_ticket.title.to_string();
+                    app.active_menu_item = MenuItem::EditForm;
+                }
+            },
+        }
+
+     }
+    
+Ok(())
+
+}
 
 fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
     if let Some(selected) = app.ticket_list_state.selected() {
@@ -629,21 +633,6 @@ fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
      
 }
 
-// pub fn edit_ticket_at_index(app: &AppState) -> Result<(), Error> {
-//     if let Some(selected) = app.ticket_list_state.selected() {
-//         if selected != 0 {
-//             let db_content = fs::read_to_string(DB_PATH)?;
-//             let mut parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
-//             let ticket = &mut parsed[selected];
-//             render_edit_form();
-//         }
-//     }
-    
-// Ok(())
-
-// }
-
-
 
 fn update_ticket_count(app: &mut AppState) {
     
@@ -662,8 +651,6 @@ fn update_ticket_count(app: &mut AppState) {
     for ticket in &app.closed_tickets {
             app.closed_count += 1;
     }
-
-
 }
 
 fn update_db(app: &AppState) {
@@ -671,4 +658,50 @@ fn update_db(app: &AppState) {
     let mut all_tickets = app.open_tickets.clone();
     all_tickets.append(&mut app.closed_tickets.clone());
     write_changes(&all_tickets);
+}
+
+fn toggle_ticket_status(app: &mut AppState) -> Result<(), Error> {
+    if let Some(selected) = app.ticket_list_state.selected() {
+        match app.ticket_view_mode {
+            TicketViewMode::Open => {
+                app.open_tickets[selected].status = TicketStatus::Closed;
+                app.open_tickets[selected].updated_at = Utc::now();
+            },
+            TicketViewMode::Closed => {
+                app.closed_tickets[selected].status = TicketStatus::Open;
+                app.closed_tickets[selected].updated_at = Utc::now();
+            },
+        }
+        update_db(&app);
+        update_ticket_count(app);
+        render_tickets(app);
+    }
+    Ok(())
+}
+
+fn add_sample_ticket(app: &mut AppState) -> Result<(), Error> {
+
+    let parsed: Vec<Tickets> = read_db().unwrap();
+    let mut max_id = 0;
+    for ticket in parsed.iter() {
+        if ticket.id > max_id {
+            max_id = ticket.id;
+        }
+    }
+
+    let new_ticket = Tickets {
+        id: max_id + 1,
+        title: "Make Coffee".to_owned(),
+        description: "Extra dark".to_owned(),
+        status: TicketStatus::Open,
+        priority: "High".to_owned(),
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+
+    app.open_tickets.push(new_ticket);
+    update_db(&app);
+    update_ticket_count(app);
+    render_tickets(app);
+    Ok(())
 }

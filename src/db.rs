@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, process::exit, env};
+use std::{fs::{self, File}, process::exit, env, io::Write, path::Path};
 use scrum_lib::*;
 use thiserror::Error;
 use std::io;
@@ -19,6 +19,16 @@ pub fn write_changes(tickets: &Vec<Tickets>) -> Result<(), Error> {
 }
 
 pub fn read_db() -> Result<Vec<Tickets>, Error> {
+
+    if !Path::new(DB_PATH).exists() {
+        //create the file
+        let mut file = File::create(DB_PATH)?;
+        //write the default ticket
+        let default_ticket = Tickets::default();
+        write_changes(&vec![default_ticket])?;
+    }
+
+
     let db_content = fs::read_to_string(DB_PATH)?;
     let parsed: Vec<Tickets> = serde_json::from_str(&db_content)?;
     Ok(parsed)
