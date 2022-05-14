@@ -24,6 +24,8 @@ use tui::{
 };
 use db::*;
 
+const TICKRATE: u64 = 60000;
+
 enum Event<I> {
     Input(I),
     Tick,
@@ -32,11 +34,13 @@ enum Event<I> {
 struct AppState {
     ticket_view_mode: TicketViewMode,
     active_menu_item: MenuItem,
-    ticket_list: Vec<Tickets>,
+    open_tickets: Vec<Tickets>,
+    closed_tickets: Vec<Tickets>,
     open_count: i32,
     closed_count: i32,
     ticket_list_state: TableState,
 }
+
 
 #[derive(PartialEq)]
 enum TicketViewMode {
@@ -66,7 +70,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = AppState {
         ticket_view_mode: TicketViewMode::Open,
         active_menu_item: MenuItem::Tickets,
-        ticket_list: read_db()?,
+        open_tickets: get_open_tickets(),
+        closed_tickets: get_closed_tickets(),
         open_count: 0,
         closed_count: 0,
         ticket_list_state: TableState::default(),
@@ -76,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     update_ticket_count(&mut app);
 
     let (tx, rx) = mpsc::channel();
-    let tick_rate = Duration::from_millis(200);
+    let tick_rate = Duration::from_millis(TICKRATE);
     thread::spawn(move || {
         let mut last_tick = Instant::now();
         loop {
@@ -107,6 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "Quit"];
     let edit_menu_titles = vec!["Save", "Cancel", "Quit"]; //Convert to const?
     let mut menu_titles = &ticket_menu_titles;
+
 
     app.ticket_list_state.select(Some(0));
 
@@ -198,9 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('a') => {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
-                        add_ticket().expect("Cannot add ticket");
-                        app.ticket_list = read_db()?;
-                        update_ticket_count(&mut app);
+                        add_ticket(&mut app).expect("Cannot add ticket");
                     }
                         _ => {}
                 }
@@ -212,9 +216,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Char('d') => {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
-                    remove_ticket_at_index(&mut app.ticket_list_state).expect("Cannot remove ticket");
-                    app.ticket_list = read_db()?;
-                    update_ticket_count(&mut app);
+                            remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
                 }
                 _ => {}
                 }
@@ -246,6 +248,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Down => {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
+                            //only try if something is selected
+                          
                     if let Some(selected) = app.ticket_list_state.selected() {
                         
                         let mut amount_tickets = 0;
@@ -256,12 +260,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             amount_tickets = app.closed_count;
                         }
                         
+                        if amount_tickets == 0 {
+                            continue;
+                        }
                         if selected >= (amount_tickets - 1).try_into().unwrap() {
                             app.ticket_list_state.select(Some(0));
                         } else {
                             app.ticket_list_state.select(Some(selected + 1));                            
                         }
-                    }
+                    
+                }
                 }
                         _ => {}
                }
@@ -269,7 +277,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 KeyCode::Up => {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
-                    if let Some(selected) = app.ticket_list_state.selected() {
+                            
+                            if let Some(selected) = app.ticket_list_state.selected() {
 
                         let mut amount_tickets = 0;
 
@@ -278,13 +287,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         } else if app.ticket_view_mode == TicketViewMode::Closed {
                             amount_tickets = app.closed_count;
                         }
-
+                        if amount_tickets == 0 {
+                            continue;
+                        }
                         if selected > 0 {
                             app.ticket_list_state.select(Some(selected - 1));
                         } else {
                             app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                         }
                     }
+                
                 }
                         _ => {}
                }
@@ -303,12 +315,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
                     //Close selected ticket
-                    if let Some(selected) = app.ticket_list_state.selected() {
-                        app.ticket_list[selected].status = TicketStatus::Closed;
-
-                        update_ticket_count(&mut app);
-                        write_changes(&app.ticket_list)?;
+                    match app.ticket_view_mode {
+                        TicketViewMode::Open => {
+                            if let Some(selected) = app.ticket_list_state.selected() {
+                                app.open_tickets[selected].status = TicketStatus::Closed;
+        
+                                update_ticket_count(&mut app);
+                                update_db(&app);
+                            }
+                        }
+                        TicketViewMode::Closed =>     {                   
+                        }
                     }
+
                 }
                         _ => {}
                     }
@@ -317,13 +336,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match app.active_menu_item {
                         MenuItem::Tickets => {
                     //Open selected ticket
-                    if let Some(selected) = app.ticket_list_state.selected() {
-                        app.ticket_list[selected].status = TicketStatus::Open;
-
-                        update_ticket_count(&mut app);
-                        write_changes(&app.ticket_list)?;
-                    }
-                }
+                        match app.ticket_view_mode {
+                            TicketViewMode::Open => {
+                                if let Some(selected) = app.ticket_list_state.selected() {
+                                    app.open_tickets[selected].status = TicketStatus::Open;
+            
+                                    update_ticket_count(&mut app);
+                                    update_db(&app);
+                                }
+                            }
+                            TicketViewMode::Closed =>     {                   
+                            }
+                        }
+                         }
                         _ => {}
                     }
                 }
@@ -339,13 +364,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<'a>, Table<'a>) {
     
-    //let ticket_list = read_db().expect("can fetch ticket list");
-    let ticket_list = app.ticket_list.clone();
-
-    //Sort tickets by status
+ 
     let mut tickets = Vec::new();
     match app.ticket_view_mode {
         TicketViewMode::Open => {
+            let ticket_list = app.open_tickets.clone();
             for ticket in ticket_list {
                 if ticket.status.to_string() == "Open" { //FIX THIS!
                     tickets.push(ticket);
@@ -353,6 +376,7 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
             }
         }
         TicketViewMode::Closed => {
+            let ticket_list = app.open_tickets.clone();
             for ticket in ticket_list {
                 if ticket.status.to_string() == "Closed" { //FIX THIS!
                     tickets.push(ticket);
@@ -364,8 +388,8 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
 
     let mut selected_ticket = Tickets {
         id: 0,
-        title: "Zabbix Setup".to_owned(),
-        description: "Setup Zabbix".to_owned(),
+        title: "No tickets".to_owned(),
+        description: "".to_owned(),
         status: TicketStatus::Open,
         priority: "Low".to_owned(),
         created_at: Utc::now(),
@@ -374,7 +398,7 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
 
     //If there is at least ticket
     if tickets.len() > 0 {
-    let selected_ticket = tickets
+    selected_ticket = tickets
         .get(
             ticket_list_state
                 .selected()
@@ -477,7 +501,7 @@ fn render_tickets<'a>(ticket_list_state: &TableState, app: &AppState) -> (Table<
     (list, ticket_detail)
 }
 
-fn add_ticket() -> Result<Vec<Tickets>, Error> {
+fn add_ticket(app: &mut AppState) -> Result<(), Error> {
 
     let mut parsed: Vec<Tickets> = read_db().unwrap();
     let mut max_id = 0;
@@ -503,26 +527,56 @@ fn add_ticket() -> Result<Vec<Tickets>, Error> {
     // };
     //client::send_request(request);
 
-    parsed.push(new_ticket);
-    write_changes(&parsed);
-    Ok(parsed)
+    app.open_tickets.push(new_ticket);
+    update_db(&app);
+    update_ticket_count(app);
+    Ok(())
 }
 
 
 
-fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Error> {
-    if let Some(selected) = ticket_list_state.selected() {
-        if selected != 0 {
-        let mut parsed = read_db().unwrap();
-        parsed.remove(selected);
-        write_changes(&parsed);
-        // Only deincrement if ticket ID is not 0
-        
-             ticket_list_state.select(Some(selected - 1));
+fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
+    if let Some(selected) = app.ticket_list_state.selected() {
+       
+        match app.ticket_view_mode {
+            TicketViewMode::Open => {
+                if app.open_tickets.len() != 0 {
+                    app.open_tickets.remove(selected);
+                    update_db(&app);
+                }
+            }
+            TicketViewMode::Closed => {
+                if app.closed_tickets.len() != 0 {
+                app.closed_tickets.remove(selected);
+                update_db(&app);
+                }
+            }
+        }
+        //Set new selected ticket
+        let mut amount_tickets = 0;
+
+        if app.ticket_view_mode == TicketViewMode::Open {
+            amount_tickets = app.open_count;
+        } else if app.ticket_view_mode == TicketViewMode::Closed {
+            amount_tickets = app.closed_count;
+        }
+
+        if amount_tickets == 0 {
+            app.ticket_list_state.select(None);
+        }
+        //If there is at least one ticket, it will move up if greater than 1, otherwise it will stay at 0
+        if selected > 0 {
+            app.ticket_list_state.select(Some(selected - 1));
+        } else {
+            app.ticket_list_state.select(Some((0).try_into().unwrap()));
         }
     }
 
+    update_db(&app);
+    update_ticket_count(app);
+
     Ok(())
+     
 }
 
 // pub fn edit_ticket_at_index(app: &AppState) -> Result<(), Error> {
@@ -540,10 +594,10 @@ fn remove_ticket_at_index(ticket_list_state: &mut TableState) -> Result<(), Erro
 // }
 
 fn render_edit_form<'a>(ticket_list_state: &TableState, app: &'a AppState) -> Paragraph<'a> {
-        
     //Get ticket at selected index
     let selected = ticket_list_state.selected().unwrap();
-    let ticket = &app.ticket_list[selected];
+
+    let ticket = &app.open_tickets[selected];
 
 
     let mut text = vec![Spans::from(vec![
@@ -593,18 +647,28 @@ fn render_edit_form<'a>(ticket_list_state: &TableState, app: &'a AppState) -> Pa
 
 fn update_ticket_count(app: &mut AppState) {
     
+    app.open_tickets = get_open_tickets();
+    app.closed_tickets = get_closed_tickets();
+
     //Currently reiterates through all the tickets
     //Will be more efficient to increment count when added or deleted
 
     app.open_count = 0;
     app.closed_count = 0;
 
-    for ticket in &app.ticket_list {
-        if ticket.status.to_string() == "Open" { //FIX!
+    for ticket in &app.open_tickets {
             app.open_count += 1;
-        } else if ticket.status.to_string() == "Closed" {
+    }
+    for ticket in &app.closed_tickets {
             app.closed_count += 1;
-        }
     }
 
+
+}
+
+fn update_db(app: &AppState) {
+    //Concatenate open and closed tickets
+    let mut all_tickets = app.open_tickets.clone();
+    all_tickets.append(&mut app.closed_tickets.clone());
+    write_changes(&all_tickets);
 }
