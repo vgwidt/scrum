@@ -20,7 +20,7 @@ use tui::{
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text},
     widgets::{
-        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, TableState,
+        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, TableState, Wrap,
     },
     Terminal
 };
@@ -28,14 +28,12 @@ use db::*;
 use form::*;
 use crate::app::*;
 
-const TICKRATE: u64 = 60000;
+const TICKRATE: u64 = 1000;
 
 enum Event<I> {
     Input(I),
     Tick,
 }
-
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
@@ -87,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear()?;
 
     let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "0: Toggle Open/Close", "Quit"];
-    let edit_menu_titles = vec!["Save", "Cancel", "Quit"]; //Convert to const?
+    let edit_menu_titles = vec!["Edit Menu: Press escape to cancel"]; //Convert to const?
     let mut menu_titles = &ticket_menu_titles;
 
     app.ticket_list_state.select(Some(0));
@@ -146,7 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let tickets_chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints(
-                            [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
+                            [Constraint::Percentage(40), Constraint::Percentage(60)].as_ref(),
                         )
                         .split(chunks[1]);
                     let (left, right) = render_tickets(&app);
@@ -157,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let edit_form_chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints(
-                            [Constraint::Percentage(100), Constraint::Percentage(0)].as_ref(),
+                            [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
                         )
                         .split(chunks[1]);
                     let (input, output) = render_edit_form(&mut app);
@@ -184,7 +182,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             execute!(stdout, LeaveAlternateScreen)?;
                             break;
                         }
-                        KeyCode::Char('t') => app.active_menu_item = MenuItem::Tickets,
+                        KeyCode::Char('t') => {
+                            app.active_menu_item = MenuItem::Tickets;
+                        }
                         KeyCode::Char('a') => {
                                 init_add_ticket(&mut app).expect("Cannot add ticket");
                     }
@@ -192,12 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
                         }
                         KeyCode::Char('d') => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
-                                    remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
-                        }
-                        _ => {}
-                        }
+                             remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
                         }
                         KeyCode::Char('2') => {
                             match app.active_menu_item {
@@ -279,15 +274,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 _ => {}
                        }
                         }
-                        KeyCode::Char('c') => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
-                                }
-                                MenuItem::EditForm => {
-                                    app.active_menu_item = MenuItem::Tickets;
-                                }
-                            }
-                        }
                         KeyCode::Char('0')=> {
                            toggle_ticket_status(&mut app).expect("Cannot toggle ticket status");                         
                         }
@@ -358,8 +344,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 
-fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
-    
+fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
  
     let mut tickets = Vec::new();
     match app.ticket_view_mode {
@@ -384,10 +369,10 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
 
     let mut selected_ticket = Tickets {
         id: 0,
-        title: "No tickets".to_owned(),
-        description: "".to_owned(),
+        title: "".to_owned(),
+        description: "No tickets".to_owned(),
         status: TicketStatus::Open,
-        priority: "Low".to_owned(),
+        priority: "".to_owned(),
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };
@@ -398,9 +383,9 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
         .get(
             app.ticket_list_state
                 .selected()
-                .expect("there is always a selected ticket"),
+                .expect("ticket list state"),
         )
-        .expect("exists")
+        .expect("selected ticket")
         .clone();
     }
 
@@ -448,51 +433,88 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Table<'a>) {
             Constraint::Percentage(12),
         ]);
 
-    let ticket_detail = Table::new(vec![
-        Row::new(vec![
-        Cell::from(Span::raw(selected_ticket.id.to_string())),
-        Cell::from(Span::raw(selected_ticket.title.clone())),
-        Cell::from(Span::raw(selected_ticket.description.clone())),
-        Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
-        Cell::from(Span::raw(selected_ticket.created_at.to_string())),
+
+    // let ticket_detail = Table::new(vec![
+    //     Row::new(vec![
+    //     Cell::from(Span::raw(selected_ticket.id.to_string())),
+    //     Cell::from(Span::raw(selected_ticket.title.clone())),
+    //     Cell::from(Span::raw(selected_ticket.description.clone())),
+    //     Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
+    //     Cell::from(Span::raw(selected_ticket.created_at.format("%Y-%m-%d %H:%M:%S").to_string())),
+    // ]),
+    // ])
+    // .header(Row::new(vec![
+    //     Cell::from(Span::styled(
+    //         "ID",
+    //         Style::default().add_modifier(Modifier::BOLD),
+    //     )),
+    //     Cell::from(Span::styled(
+    //         "Title",
+    //         Style::default().add_modifier(Modifier::BOLD),
+    //     )),
+    //     Cell::from(Span::styled(
+    //         "Description",
+    //         Style::default().add_modifier(Modifier::BOLD),
+    //     )),
+    //     Cell::from(Span::styled(
+    //         "Status",
+    //         Style::default().add_modifier(Modifier::BOLD),
+    //     )),
+    //     Cell::from(Span::styled(
+    //         "Created At",
+    //         Style::default().add_modifier(Modifier::BOLD),
+    //     )),
+    // ]))
+    // .block(
+    //     Block::default()
+    //         .borders(Borders::ALL)
+    //         .style(Style::default().fg(Color::White))
+    //         .title("Detail")
+    //         .border_type(BorderType::Plain),
+    // )
+    // .widths(&[
+    //     Constraint::Percentage(5),
+    //     Constraint::Percentage(20),
+    //     Constraint::Percentage(20),
+    //     Constraint::Percentage(5),
+    //     Constraint::Percentage(20),
+    // ]);
+
+    let text = vec![Spans::from(vec![
+        Span::raw("Title: " ),
+        Span::raw(selected_ticket.title.clone()),
     ]),
-    ])
-    .header(Row::new(vec![
-        Cell::from(Span::styled(
-            "ID",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Cell::from(Span::styled(
-            "Title",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Cell::from(Span::styled(
-            "Description",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Cell::from(Span::styled(
-            "Status",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Cell::from(Span::styled(
-            "Created At",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-    ]))
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
-            .title("Detail")
-            .border_type(BorderType::Plain),
-    )
-    .widths(&[
-        Constraint::Percentage(5),
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-        Constraint::Percentage(5),
-        Constraint::Percentage(20),
-    ]);
+    Spans::from(vec![
+        Span::raw("Description: " ),
+        Span::raw(selected_ticket.description.clone()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Status: " ),
+        Span::raw(selected_ticket.status.to_string().to_owned()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Priority: " ),
+        Span::raw(selected_ticket.priority.clone()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Created At: " ),
+        Span::raw(selected_ticket.created_at.format("%Y-%m-%d %H:%M:%S").to_string()),
+    ]),
+    Spans::from(vec![
+        Span::raw("Updated At: " ),
+        Span::raw(selected_ticket.updated_at.format("%Y-%m-%d %H:%M:%S").to_string()),
+    ]),
+    ];
+
+    let ticket_detail = Paragraph::new(text)
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::White))
+                .title("Ticket Detail")
+                .border_type(BorderType::Plain),
+        ).wrap(Wrap { trim: true });
     
     (list, ticket_detail)
 }
@@ -502,7 +524,7 @@ fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
     app.edit_ticket.id = -1337;
     app.edit_ticket.status = TicketStatus::Open;
 
-   
+    app.prompt = "Enter Title".to_string();
     app.active_menu_item = MenuItem::EditForm;
     Ok(())
 }
@@ -565,7 +587,7 @@ fn add_ticket (app: &mut AppState) -> Result<(), Error> {
 
 pub fn edit_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
      if let Some(selected) = app.ticket_list_state.selected() {
-        
+        app.prompt = "Enter Title".to_string();
         match app.ticket_view_mode {
             TicketViewMode::Open => {
                 if app.open_tickets.len() != 0 {
@@ -664,12 +686,16 @@ fn toggle_ticket_status(app: &mut AppState) -> Result<(), Error> {
     if let Some(selected) = app.ticket_list_state.selected() {
         match app.ticket_view_mode {
             TicketViewMode::Open => {
-                app.open_tickets[selected].status = TicketStatus::Closed;
-                app.open_tickets[selected].updated_at = Utc::now();
+                if app.open_tickets.len() != 0 {
+                    app.open_tickets[selected].status = TicketStatus::Closed;
+                    app.open_tickets[selected].updated_at = Utc::now();
+                }
             },
             TicketViewMode::Closed => {
+                if app.closed_tickets.len() != 0 {
                 app.closed_tickets[selected].status = TicketStatus::Open;
                 app.closed_tickets[selected].updated_at = Utc::now();
+                }
             },
         }
         update_db(&app);

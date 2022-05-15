@@ -1,7 +1,6 @@
 use scrum_lib::*;
 
 use futures::prelude::*;
-use serde_json::json;
 use tokio::net::TcpStream;
 use tokio_serde::formats::*;
 use tokio_util::codec::{FramedWrite, LengthDelimitedCodec};

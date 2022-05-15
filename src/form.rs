@@ -13,7 +13,7 @@ use tui::{
     style::{Color, Modifier, Style},
     text::{Span, Spans, Text, self},
     widgets::{
-        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, TableState,
+        Block, BorderType, Borders, Cell, List, ListItem, ListState, Paragraph, Row, Table, Tabs, TableState, Wrap,
     },
     Terminal
 };
@@ -24,11 +24,11 @@ pub fn render_edit_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) 
     
     let input1 = Paragraph::new(app.input.as_ref())
     .style(Style::default().fg(Color::Yellow))
-    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone()));
+    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap { trim: true });
 
     let input2 = Paragraph::new(app.input.as_ref())
     .style(Style::default().fg(Color::Yellow))
-    .block(Block::default().borders(Borders::ALL).title("Input"));
+    .block(Block::default().borders(Borders::ALL).title("Input")).wrap(Wrap { trim: true });
 
     let messages: Vec<ListItem> = app
     .messages
@@ -44,7 +44,5 @@ pub fn render_edit_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) 
     
 
 (input1, messages)
-
-
-        
+ 
 }
