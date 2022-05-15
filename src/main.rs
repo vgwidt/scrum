@@ -433,81 +433,39 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
             Constraint::Percentage(12),
         ]);
 
-
-    // let ticket_detail = Table::new(vec![
-    //     Row::new(vec![
-    //     Cell::from(Span::raw(selected_ticket.id.to_string())),
-    //     Cell::from(Span::raw(selected_ticket.title.clone())),
-    //     Cell::from(Span::raw(selected_ticket.description.clone())),
-    //     Cell::from(Span::raw(selected_ticket.status.to_string().to_owned())),
-    //     Cell::from(Span::raw(selected_ticket.created_at.format("%Y-%m-%d %H:%M:%S").to_string())),
-    // ]),
-    // ])
-    // .header(Row::new(vec![
-    //     Cell::from(Span::styled(
-    //         "ID",
-    //         Style::default().add_modifier(Modifier::BOLD),
-    //     )),
-    //     Cell::from(Span::styled(
-    //         "Title",
-    //         Style::default().add_modifier(Modifier::BOLD),
-    //     )),
-    //     Cell::from(Span::styled(
-    //         "Description",
-    //         Style::default().add_modifier(Modifier::BOLD),
-    //     )),
-    //     Cell::from(Span::styled(
-    //         "Status",
-    //         Style::default().add_modifier(Modifier::BOLD),
-    //     )),
-    //     Cell::from(Span::styled(
-    //         "Created At",
-    //         Style::default().add_modifier(Modifier::BOLD),
-    //     )),
-    // ]))
-    // .block(
-    //     Block::default()
-    //         .borders(Borders::ALL)
-    //         .style(Style::default().fg(Color::White))
-    //         .title("Detail")
-    //         .border_type(BorderType::Plain),
-    // )
-    // .widths(&[
-    //     Constraint::Percentage(5),
-    //     Constraint::Percentage(20),
-    //     Constraint::Percentage(20),
-    //     Constraint::Percentage(5),
-    //     Constraint::Percentage(20),
-    // ]);
-
     let text = vec![Spans::from(vec![
-        Span::raw("Title: " ),
+        Span::styled("Title: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.title.clone()),
     ]),
+    Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
-        Span::raw("Description: " ),
+        Span::styled("Description: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.description.clone()),
     ]),
+    Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
-        Span::raw("Status: " ),
+        Span::styled("Status: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.status.to_string().to_owned()),
     ]),
+    Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
-        Span::raw("Priority: " ),
+        Span::styled("Priority: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.priority.clone()),
     ]),
+    Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
-        Span::raw("Created At: " ),
+        Span::styled("Created At: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.created_at.format("%Y-%m-%d %H:%M:%S").to_string()),
     ]),
+    Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
-        Span::raw("Updated At: " ),
+        Span::styled("Updated At: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.updated_at.format("%Y-%m-%d %H:%M:%S").to_string()),
     ]),
     ];
 
     let ticket_detail = Paragraph::new(text)
-        .alignment(Alignment::Center)
+        .alignment(Alignment::Left)
         .block(
             Block::default()
                 .borders(Borders::ALL)
