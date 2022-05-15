@@ -3,9 +3,9 @@
 Ticket tracking software using a terminal user interface (tui-rs).  
 
 
-# To-do / Issues
+## To-do / Issues
 
-## High Priority
+### High Priority
 
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
@@ -26,7 +26,7 @@ Ticket tracking software using a terminal user interface (tui-rs).
 - Add notes, which can be posted to a ticket (rather than having to update the description with changes)
 
 
-## Medium Priority:
+### Medium Priority:
 
 - Database backup feature
 
@@ -36,7 +36,7 @@ Ticket tracking software using a terminal user interface (tui-rs).
 
 
 
-## Low Priority
+### Low Priority
 
 - Database selection and management tools
 
@@ -45,7 +45,5 @@ Ticket tracking software using a terminal user interface (tui-rs).
 - HTML display
 
 - E-mail integration for making tickets
-
-###
 
 :jp:
