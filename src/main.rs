@@ -85,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear()?;
 
     let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "0: Toggle Open/Close", "Quit"];
-    let edit_menu_titles = vec!["Edit Menu: Press escape to cancel"]; //Convert to const?
+    let edit_menu_titles = vec!["Edit (Press escape to cancel)"]; //Convert to const?
     let mut menu_titles = &ticket_menu_titles;
 
     app.ticket_list_state.select(Some(0));
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .select(app.active_menu_item.into())
                 .block(Block::default().title("Menu").borders(Borders::ALL))
                 .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().fg(Color::LightYellow))
+                .highlight_style(Style::default().fg(Color::Yellow))
                 .divider(Span::raw("|"));
 
             rect.render_widget(tabs, chunks[0]);
