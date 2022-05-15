@@ -7,8 +7,17 @@ pub struct Tickets{
     pub id: i32,
     pub title: String,
     pub description: String,
+    pub notes: Option<Vec<Note>>,
     pub status: TicketStatus,
     pub priority: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Note{
+    pub id: i32,
+    pub text: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -19,6 +28,7 @@ impl Tickets{
             id,
             title,
             description,
+            notes: None,
             status,
             priority,
             created_at,
@@ -36,6 +46,7 @@ impl Tickets{
             id: 0,
             title: String::from(""),
             description: String::from(""),
+            notes: None,
             status: TicketStatus::Open,
             priority: String::from(""),
             created_at: Utc::now(),
@@ -47,6 +58,7 @@ impl Tickets{
             id: 0,
             title: String::from("Sample Ticket"),
             description: String::from("This is a sample description"),
+            notes: None,
             status: TicketStatus::Open,
             priority: String::from("Low"),
             created_at: Utc::now(),
