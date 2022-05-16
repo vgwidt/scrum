@@ -6,6 +6,7 @@ Ticket tracking software using a terminal user interface (tui-rs).
 ## To-do / Issues
 
 ### High Priority
+- Fix crash bug (indexing issue).  Can reproduce with fresh start, create ticket, close ticket 1 then 0 then open 1 then 0 then close 0 and it crashes, likely due to order/indexing.  Might crash when trying to re-open 0 before 1 as well if it ends up lower in the list.
 
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
