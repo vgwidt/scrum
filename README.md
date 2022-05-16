@@ -6,8 +6,6 @@ Ticket tracking software using a terminal user interface (tui-rs).
 ## To-do / Issues
 
 ### High Priority
-- Fix crash bug (indexing issue).  Can reproduce with fresh start, create ticket, close ticket 1 then 0 then open 1 then 0 then close 0 and it crashes, likely due to order/indexing.  Might crash when trying to re-open 0 before 1 as well if it ends up lower in the list.
-
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
 - Allow left right cursor movement on inputs
@@ -26,6 +24,8 @@ Ticket tracking software using a terminal user interface (tui-rs).
 
 - Add notes, which can be posted to a ticket (rather than having to update the description with changes)
 
+- Sorting
+
 
 ### Medium Priority:
 
@@ -35,6 +35,7 @@ Ticket tracking software using a terminal user interface (tui-rs).
 
 - How selection between open and closed works is probably terrible and should be redone.  It currently relies on way too many checks to keep system afloat, there is definitely a way cleaner way to do it.
 
+- Better indexing to determine selected item
 
 
 ### Low Priority
