@@ -1,7 +1,8 @@
 # Scrum
 
-Ticket tracking software using a terminal user interface (tui-rs).  
+Ticket tracking software using a terminal user interface (tui-rs). 
 
+This is my first attempt at making a useful application, particularly for myself because I sorely miss having a ticketing system at my current job.  I'm trying to balance doing things right with getting a working, safe, and usable prototype.  I then plan to go back and try to make the code as clean and efficient as possible, which I believe will be very helpful as a learner.
 
 ## To-do / Issues
 
