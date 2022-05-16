@@ -16,7 +16,6 @@ pub struct Tickets{
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Note{
-    pub id: i32,
     pub text: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -66,6 +65,16 @@ impl Tickets{
         }
     }
     
+}
+
+impl Note {
+    fn new(text: String, created_at: DateTime<Utc>, updated_at: DateTime<Utc>) -> Note {
+        Note{
+            text,
+            created_at,
+            updated_at,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

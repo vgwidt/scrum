@@ -37,6 +37,8 @@ Ticket tracking software using a terminal user interface (tui-rs).
 
 - Better indexing to determine selected item
 
+- If menus exactly the same, I could set an AppState variable that sets the amount of expected messages to save from having to create different forms
+
 
 ### Low Priority
 

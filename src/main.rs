@@ -84,8 +84,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "1: Opened Tickets", "2: Closed Tickets", "0: Toggle Open/Close", "Quit"];
+    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Note (Add)", "Toggle Open/Closed View", "0: Toggle Open/Close", "Quit"];
     let edit_menu_titles = vec!["Edit (Press escape to cancel)"]; //Convert to const?
+    let note_menu_titles = vec!["Add note (Press escape to cancel)"]; //Convert to const?
+    let confirm_menu_titles = vec!["Confirmation (Press escape to cancel)"]; //Convert to const?
     let mut menu_titles = &ticket_menu_titles;
 
     app.ticket_list_state.select(Some(0));
@@ -113,7 +115,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 MenuItem::EditForm => {
                     menu_titles = &edit_menu_titles;
-                }     
+                }
+                MenuItem::NoteForm => {
+                    menu_titles = &note_menu_titles;
+                }
+                MenuItem::ConfirmForm => {
+                    menu_titles = &confirm_menu_titles;
+                },     
             }
             let menu = menu_titles
                 .iter()
@@ -152,12 +160,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     rect.render_widget(right, tickets_chunks[1]);
                 }
                 MenuItem::EditForm => {
-                    let edit_form_chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints(
-                            [Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),
-                        )
-                        .split(chunks[1]);
+                    let edit_form_chunks = Layout::default().direction(Direction::Vertical)
+                        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
                     let (input, output) = render_edit_form(&mut app);
                     rect.render_widget(input, edit_form_chunks[0]);
                     rect.render_widget(output, edit_form_chunks[1]);
@@ -166,6 +170,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                      rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
                     }
                 }
+                MenuItem::NoteForm => {
+                    let edit_form_chunks = Layout::default().direction(Direction::Vertical)
+                        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
+                    let (input, output) = render_edit_form(&mut app);
+                    rect.render_widget(input, edit_form_chunks[0]);
+                    rect.render_widget(output, edit_form_chunks[1]);
+                    //Dangerous, if we add more fields this needs to be changed
+                    if app.messages.len() < 1 {
+                     rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
+                    }
+                },
+                MenuItem::ConfirmForm => todo!(),
             }
             
         })?;
@@ -182,9 +198,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             execute!(stdout, LeaveAlternateScreen)?;
                             break;
                         }
-                        KeyCode::Char('t') => {
-                            app.active_menu_item = MenuItem::Tickets;
-                        }
                         KeyCode::Char('a') => {
                                 init_add_ticket(&mut app).expect("Cannot add ticket");
                     }
@@ -194,29 +207,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char('d') => {
                              remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
                         }
-                        KeyCode::Char('2') => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
+                        KeyCode::Char('t') => {
+                            match app.ticket_view_mode {
+                                TicketViewMode::Open => {
                                     app.ticket_view_mode = TicketViewMode::Closed;
                                     //set index to 0 to prevent crash
                                     app.ticket_list_state.select(Some(0));
                                 }
-                                _ => {}
-                            }
-        
-                        }
-                        KeyCode::Char('1') => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
+                                TicketViewMode::Closed => {
                                     app.ticket_view_mode = TicketViewMode::Open;
                                     //set index to 0 to prevent crash
                                     app.ticket_list_state.select(Some(0));
                                 }
-                                _ => {}
                             }
+
                         }
-                        KeyCode::Char('s') => {
-                            //save
+                        KeyCode::Char('n') => {
+                            init_add_note(&mut app);
                         }
                         KeyCode::Down => {
                             match app.active_menu_item {
@@ -278,14 +285,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                            toggle_ticket_status(&mut app).expect("Cannot toggle ticket status");                         
                         }
                         KeyCode::Tab => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
-                                    app.active_menu_item = MenuItem::EditForm;
-                                }
-                                MenuItem::EditForm => {
-                                    //Go to next editable field
-                                }
-                            }
+                             app.active_menu_item = MenuItem::EditForm;
                         }
                         _ => {}
                     },
@@ -336,6 +336,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Event::Tick => {}
                 }
             },
+            MenuItem::NoteForm => {
+                match rx.recv()? {           
+                    Event::Input(event) => match event.code {
+                    KeyCode::Enter => {
+                        app.messages.push(app.input.drain(..).collect());
+                        if app.messages.len() == 1 {
+                            app.prompt = "Hit Enter to save or Esc to cancel".to_string();
+                            app.input = app.messages[0].clone();
+                        }
+                        else if app.messages.len() >= 2 {
+                           let newnote = Note {
+                                text: app.messages[0].clone(),
+                                created_at: Utc::now(),
+                                updated_at: Utc::now(),
+                            };
+                            //Init vector if it doesn't exist
+                            if app.edit_ticket.notes.is_none() {
+                                app.edit_ticket.notes = Some(Vec::new());
+                            }
+                            //Add note to vector
+                            app.edit_ticket.notes.as_mut().unwrap().push(newnote);
+                            add_note(&mut app);
+                    }
+                }
+                    KeyCode::Char(c) => {
+                        //Only allow edit up to 1 line
+                        if app.messages.len() < 1 {
+                        app.input.push(c);
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        //Only allow edit up to 1 line
+                        if app.messages.len() < 1 {
+                        app.input.pop();
+                        }
+                    }
+                    KeyCode::Esc => {
+                        //return to Ticket menu without saving
+                        app.active_menu_item = MenuItem::Tickets;
+                        app.input = String::new();
+                        app.messages = Vec::new();
+                    }
+                    _ => {}
+                },
+                    Event::Tick => {}
+                }
+            },
+            MenuItem::ConfirmForm => todo!(),
         }
         
     }
@@ -480,7 +528,7 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
 
 fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
 
-    app.edit_ticket.id = -1337;
+    app.edit_ticket.id = -7;
     app.edit_ticket.status = TicketStatus::Open;
 
     app.prompt = "Enter Title".to_string();
@@ -491,7 +539,7 @@ fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
 fn add_ticket (app: &mut AppState) -> Result<(), Error> {
     if let Some(selected) = app.ticket_list_state.selected() {
     //if new
-    if app.edit_ticket.id == -1337 {
+    if app.edit_ticket.id == -7 {
         //Generate unique ID
         let parsed: Vec<Tickets> = read_db().unwrap();
         let mut max_id = 0;
@@ -566,8 +614,57 @@ pub fn edit_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
 
      }
     
-Ok(())
+    Ok(())
 
+}
+
+pub fn init_add_note(app: &mut AppState) -> Result<(), Error> {
+   //If menus exactly the same, I could set an AppState variable that sets the amount of expected messages to save from having to create different forms
+    app.messages = Vec::new();
+    if let Some(selected) = app.ticket_list_state.selected() {
+        app.prompt = "Enter Note".to_string();
+        match app.ticket_view_mode {
+            TicketViewMode::Open => {
+                if app.open_tickets.len() != 0 {
+                    app.edit_ticket = app.open_tickets[selected].clone();
+                    app.input = "".to_string();
+                    app.active_menu_item = MenuItem::NoteForm;
+                }
+            },
+            TicketViewMode::Closed => {
+                if app.closed_tickets.len() != 0 {
+                    app.edit_ticket = app.closed_tickets[selected].clone();
+                    app.input = app.edit_ticket.title.to_string();
+                    app.active_menu_item = MenuItem::NoteForm;
+                }
+            },
+        }
+
+     }
+    
+    Ok(())
+}
+
+pub fn add_note(app: &mut AppState) -> Result<(), Error> {
+    if let Some(selected) = app.ticket_list_state.selected() {
+    match app.ticket_view_mode {
+        TicketViewMode::Open => {
+            app.open_tickets[selected] = app.edit_ticket.clone();
+        },
+        TicketViewMode::Closed => {
+            app.closed_tickets[selected] = app.edit_ticket.clone();
+        },
+    }  
+    update_db(&app);
+    update_ticket_count(app);
+    render_tickets(app);
+
+    app.edit_ticket = Tickets::default();
+    app.input = String::new();
+    app.messages = Vec::new();
+    app.active_menu_item = MenuItem::Tickets;
+}
+    Ok(())
 }
 
 fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
@@ -661,7 +758,7 @@ fn toggle_ticket_status(app: &mut AppState) -> Result<(), Error> {
         }
 
         update_selected_ticket(app, selected);
-        
+
         update_db(&app);
         update_ticket_count(app);
         render_tickets(app);

@@ -26,6 +26,8 @@ pub enum TicketViewMode {
 pub enum MenuItem {
     Tickets,
     EditForm,
+    NoteForm,
+    ConfirmForm,
 }
 
 impl From<MenuItem> for usize {
@@ -33,6 +35,8 @@ impl From<MenuItem> for usize {
         match input {
             MenuItem::Tickets => 0,
             MenuItem::EditForm => 1,
+            MenuItem::NoteForm => 2,
+            MenuItem::ConfirmForm => 3,
         }
     }
 }
