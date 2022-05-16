@@ -587,24 +587,7 @@ fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
                 }
             }
         }
-        //Set new selected ticket
-        let mut amount_tickets = 0;
-
-        if app.ticket_view_mode == TicketViewMode::Open {
-            amount_tickets = app.open_count;
-        } else if app.ticket_view_mode == TicketViewMode::Closed {
-            amount_tickets = app.closed_count;
-        }
-
-        if amount_tickets == 0 {
-            app.ticket_list_state.select(None);
-        }
-        //If there is at least one ticket, it will move up if greater than 1, otherwise it will stay at 0
-        if selected > 0 {
-            app.ticket_list_state.select(Some(selected - 1));
-        } else {
-            app.ticket_list_state.select(Some((0).try_into().unwrap()));
-        }
+        update_selected_ticket(app, selected);
     }
 
     update_db(&app);
@@ -612,6 +595,25 @@ fn remove_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
 
     Ok(())
      
+}
+
+fn update_selected_ticket(app: &mut AppState, selected: usize) {
+    //Set new selected ticket
+    let mut amount_tickets = 0;
+    if app.ticket_view_mode == TicketViewMode::Open {
+        amount_tickets = app.open_count;
+    } else if app.ticket_view_mode == TicketViewMode::Closed {
+        amount_tickets = app.closed_count;
+    }
+    if amount_tickets == 0 {
+        app.ticket_list_state.select(None);
+    }
+    //If there is at least one ticket, it will move up if greater than 1, otherwise it will stay at 0
+    if selected > 0 {
+        app.ticket_list_state.select(Some(selected - 1));
+    } else {
+        app.ticket_list_state.select(Some((0).try_into().unwrap()));
+    }
 }
 
 
@@ -657,6 +659,9 @@ fn toggle_ticket_status(app: &mut AppState) -> Result<(), Error> {
                 }
             },
         }
+
+        update_selected_ticket(app, selected);
+        
         update_db(&app);
         update_ticket_count(app);
         render_tickets(app);
