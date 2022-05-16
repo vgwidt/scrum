@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Delete", "Note (Add)", "Toggle Open/Closed View", "0: Toggle Open/Close", "Quit"];
+    let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Note (Add)", "Toggle Open/Closed View", "0: Toggle Open/Close", "Quit"];
     let edit_menu_titles = vec!["Edit (Press escape to cancel)"]; //Convert to const?
     let note_menu_titles = vec!["Add note (Press escape to cancel)"]; //Convert to const?
     let confirm_menu_titles = vec!["Confirmation (Press escape to cancel)"]; //Convert to const?
@@ -204,8 +204,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char('e') => {
                             edit_ticket_at_index(&mut app).expect("Cannot edit ticket");
                         }
-                        KeyCode::Char('d') => {
-                             remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
+                        KeyCode::F(8) => {
+                            match app.ticket_view_mode {
+                                TicketViewMode::Open => {
+                                    //delete_ticket_at_index(&mut app).expect("Cannot delete ticket");
+                                }
+                                TicketViewMode::Closed => {
+                                    remove_ticket_at_index(&mut app).expect("Cannot remove ticket");
+                                }
+                            }
+                            
                         }
                         KeyCode::Char('t') => {
                             match app.ticket_view_mode {
@@ -482,7 +490,21 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
             Constraint::Percentage(12),
         ]);
 
-    let text = vec![Spans::from(vec![
+    //Create vector of spans for each note in selected ticket
+    let mut notespan = Vec::new();
+    if selected_ticket.notes.is_some() {
+        let notes = selected_ticket.notes.clone().unwrap();
+        for note in notes {
+            notespan.push(
+                Spans::from(vec![
+                Span::raw(note.updated_at.format("%Y-%m-%d %H:%M").to_string()),
+                Span::styled(" Update: ", Style::default().fg(Color::Yellow)),
+                Span::raw(note.text.clone()),
+            ]));
+        }
+    }
+
+    let mut text = vec![Spans::from(vec![
         Span::styled("Title: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.title.clone()),
     ]),
@@ -511,7 +533,11 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
         Span::styled("Updated At: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.updated_at.format("%Y-%m-%d %H:%M:%S").to_string()),
     ]),
+    Spans::from(vec![Span::raw("\n")]),
     ];
+
+    //add notespan to text
+    text.extend(notespan);
 
     let ticket_detail = Paragraph::new(text)
         .alignment(Alignment::Left)
