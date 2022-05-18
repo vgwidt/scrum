@@ -441,8 +441,8 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
         Row::new(vec![
             Cell::from(item.id.to_string()),
             Cell::from(item.title.clone()),
-            Cell::from(item.created_at.format("%Y-%m-%d %H:%M").to_string()),
-            Cell::from(item.updated_at.format("%Y-%m-%d %H:%M").to_string()),
+            Cell::from(item.created_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
+            Cell::from(item.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
             Cell::from(item.priority.to_string()),
         ])
     });
@@ -517,12 +517,12 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
         Span::styled("Created At: ", Style::default().fg(Color::Yellow)),
-        Span::raw(selected_ticket.created_at.format("%Y-%m-%d %H:%M:%S").to_string()),
+        Span::raw(selected_ticket.created_at.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string()),
     ]),
     Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
         Span::styled("Updated At: ", Style::default().fg(Color::Yellow)),
-        Span::raw(selected_ticket.updated_at.format("%Y-%m-%d %H:%M:%S").to_string()),
+        Span::raw(selected_ticket.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string()),
     ]),
     Spans::from(vec![Span::raw("\n")]),
     ];
