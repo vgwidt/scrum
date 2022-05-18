@@ -7,7 +7,9 @@ This is my first attempt at making a useful application, particularly for myself
 ## To-do / Issues
 
 ### High Priority
-- Allow notes to be edited, removed, or moved from one ticket to another
+- Allow notes to be edited, removed, or moved from one ticket to another (decide where to be able to select).
+
+- Allow scroll on ticket description
 
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
@@ -24,8 +26,6 @@ This is my first attempt at making a useful application, particularly for myself
 - Checks for whether a ticket is selected or not isn't working like I imagined (if let Some(selected) = app.ticket_list_state.selected() {).  Currently checking length of open or closed instead (if not empty)
 
 - Cursor location does not work when text is wrapped
-
-- Add notes, which can be posted to a ticket (rather than having to update the description with changes)
 
 - Sorting
 
