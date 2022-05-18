@@ -92,7 +92,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.ticket_list_state.select(Some(0));
 
-
     loop {
         terminal.draw(|rect| {
             let size = rect.size();
@@ -233,15 +232,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char('n') => {
                             init_add_note(&mut app);
                         }
-                        KeyCode::Down => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
-                                    //only try if something is selected
-                                  
+                        KeyCode::Down => {      
                             if let Some(selected) = app.ticket_list_state.selected() {
-                                
+
                                 let mut amount_tickets = 0;
-        
+
                                 if app.ticket_view_mode == TicketViewMode::Open {
                                     amount_tickets = app.open_count;
                                 } else if app.ticket_view_mode == TicketViewMode::Closed {
@@ -256,18 +251,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 } else {
                                     app.ticket_list_state.select(Some(selected + 1));                            
                                 }
-                            
                         }
-                        }
-                                _ => {}
-                       }
                         }
                         KeyCode::Up => {
-                            match app.active_menu_item {
-                                MenuItem::Tickets => {
-                                    
-                                    if let Some(selected) = app.ticket_list_state.selected() {
-        
+                            if let Some(selected) = app.ticket_list_state.selected() {
+                                
                                 let mut amount_tickets = 0;
         
                                 if app.ticket_view_mode == TicketViewMode::Open {
@@ -284,10 +272,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                                 }
                             }
-                        
-                        }
-                                _ => {}
-                       }
                         }
                         KeyCode::Char('0')=> {
                            toggle_ticket_status(&mut app).expect("Cannot toggle ticket status");                         
@@ -332,6 +316,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if app.messages.len() < 3 {
                         app.input.pop();
                         }
+                    }
+                    KeyCode::Left => {
+                        //Move cursor left
+                    }
+                    KeyCode::Right => {
+                        //Move cursor right
+
                     }
                     KeyCode::Esc => {
                         //return to Ticket menu without saving
