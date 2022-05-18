@@ -7,6 +7,8 @@ This is my first attempt at making a useful application, particularly for myself
 ## To-do / Issues
 
 ### High Priority
+- Allow notes to be edited, removed, or moved from one ticket to another
+
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
 - Allow left right cursor movement on inputs
