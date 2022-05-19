@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     [
                         Constraint::Length(3),
                         Constraint::Min(2),
-                        Constraint::Length(1), //To make room for the footer which doesn't exist at the moment
+                       // Constraint::Length(1), //To make room for the footer which doesn't exist at the moment
                     ]
                     .as_ref(),
                 )
@@ -140,7 +140,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let tabs = Tabs::new(menu)
                 .select(app.active_menu_item.into())
-                .block(Block::default().title("Menu").borders(Borders::ALL))
+                .block(Block::default().title(" Menu").borders(Borders::ALL))
                 .style(Style::default().fg(Color::White))
                 .highlight_style(Style::default().fg(Color::Yellow))
                 .divider(Span::raw("|"));
@@ -448,7 +448,7 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     });
 
     let list = Table::new(rows)
-        .block(Block::default().borders(Borders::ALL).title("Tickets"))
+        .block(Block::default().borders(Borders::ALL).title(" Tickets"))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black))
         .header(Row::new(vec![
@@ -530,7 +530,7 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
             Block::default()
                 .borders(Borders::ALL)
                 .style(Style::default().fg(Color::White))
-                .title("Ticket Detail")
+                .title(" Ticket Detail")
                 .border_type(BorderType::Plain),
         ).wrap(Wrap { trim: true });
     
