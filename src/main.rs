@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     [
                         Constraint::Length(3),
                         Constraint::Min(2),
-                        Constraint::Length(3),
+                        Constraint::Length(1), //To make room for the footer which doesn't exist at the moment
                     ]
                     .as_ref(),
                 )
@@ -495,7 +495,21 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
         }
     }
 
-    let mut text = vec![Spans::from(vec![
+    let mut text = vec![
+        Spans::from(vec![
+            Span::styled("ID: ", Style::default().fg(Color::Yellow)),
+            Span::raw(selected_ticket.id.to_string()),
+            Span::styled(" | Status: ", Style::default().fg(Color::Yellow)),
+            Span::raw(selected_ticket.status.to_string().to_owned()),
+            Span::styled(" | Priority: ", Style::default().fg(Color::Yellow)),
+            Span::raw(selected_ticket.priority.to_string().to_owned()),
+            Span::styled(" | Created: ", Style::default().fg(Color::Yellow)),
+            Span::raw(selected_ticket.created_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
+            Span::styled(" | Updated: ", Style::default().fg(Color::Yellow)),
+            Span::raw(selected_ticket.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
+        ]),
+        Spans::from(vec![Span::raw("\n")]),
+        Spans::from(vec![
         Span::styled("Title: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.title.clone()),
     ]),
@@ -503,26 +517,6 @@ fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     Spans::from(vec![
         Span::styled("Description: ", Style::default().fg(Color::Yellow)),
         Span::raw(selected_ticket.description.clone()),
-    ]),
-    Spans::from(vec![Span::raw("\n")]),
-    Spans::from(vec![
-        Span::styled("Status: ", Style::default().fg(Color::Yellow)),
-        Span::raw(selected_ticket.status.to_string().to_owned()),
-    ]),
-    Spans::from(vec![Span::raw("\n")]),
-    Spans::from(vec![
-        Span::styled("Priority: ", Style::default().fg(Color::Yellow)),
-        Span::raw(selected_ticket.priority.clone()),
-    ]),
-    Spans::from(vec![Span::raw("\n")]),
-    Spans::from(vec![
-        Span::styled("Created At: ", Style::default().fg(Color::Yellow)),
-        Span::raw(selected_ticket.created_at.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string()),
-    ]),
-    Spans::from(vec![Span::raw("\n")]),
-    Spans::from(vec![
-        Span::styled("Updated At: ", Style::default().fg(Color::Yellow)),
-        Span::raw(selected_ticket.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S").to_string()),
     ]),
     Spans::from(vec![Span::raw("\n")]),
     ];
