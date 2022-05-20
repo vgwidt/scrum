@@ -53,6 +53,33 @@ impl AppState {
     }
 }
 
+#[derive(PartialEq)]
+pub enum TicketViewMode {
+    Open,
+    Closed,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum MenuItem {
+    Tickets,
+    Notes,
+    EditForm,
+    NoteForm,
+    ConfirmForm,
+}
+
+impl From<MenuItem> for usize {
+    fn from(input: MenuItem) -> usize {
+        match input {
+            MenuItem::Tickets => 0,
+            MenuItem::Notes => 1,
+            MenuItem::EditForm => todo!(),
+            MenuItem::NoteForm => todo!(),
+            MenuItem::ConfirmForm => todo!(),
+        }
+    }
+}
+
 pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
 
         enable_raw_mode().expect("raw mode");
@@ -89,6 +116,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
         let edit_menu_titles = vec!["Edit (Press escape to cancel)"]; //Convert to const?
         let note_menu_titles = vec!["Add note (Press escape to cancel)"]; //Convert to const?
         let confirm_menu_titles = vec!["Confirmation (Press escape to cancel)"]; //Convert to const?
+        let notes_menu_titles = vec!["Notes"]; //Convert to const?
         let mut menu_titles = &ticket_menu_titles;
     
         app.ticket_list_state.select(Some(0));
@@ -121,7 +149,10 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     }
                     MenuItem::ConfirmForm => {
                         menu_titles = &confirm_menu_titles;
-                    },     
+                    },
+                    MenuItem::Notes => {
+                        menu_titles = &note_menu_titles;    
+                    }
                 }
                 let menu = menu_titles
                     .iter()
@@ -160,28 +191,32 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         rect.render_widget(right, tickets_chunks[1]);
                     }
                     MenuItem::EditForm => {
-                        let edit_form_chunks = Layout::default().direction(Direction::Vertical)
+                        let chunks = Layout::default().direction(Direction::Vertical)
                             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
                         let (input, output) = render_edit_form(app);
-                        rect.render_widget(input, edit_form_chunks[0]);
-                        rect.render_widget(output, edit_form_chunks[1]);
+                        rect.render_widget(input, chunks[0]);
+                        rect.render_widget(output, chunks[1]);
                         //Dangerous, if we add more fields this needs to be changed
                         if app.messages.len() < 3 {
                          rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
                         }
                     }
                     MenuItem::NoteForm => {
-                        let edit_form_chunks = Layout::default().direction(Direction::Vertical)
+                        let chunks = Layout::default().direction(Direction::Vertical)
                             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
                         let (input, output) = render_edit_form(app);
-                        rect.render_widget(input, edit_form_chunks[0]);
-                        rect.render_widget(output, edit_form_chunks[1]);
+                        rect.render_widget(input, chunks[0]);
+                        rect.render_widget(output, chunks[1]);
                         //Dangerous, if we add more fields this needs to be changed
                         if app.messages.len() < 1 {
                          rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
                         }
                     },
                     MenuItem::ConfirmForm => todo!(),
+                    MenuItem::Notes => {
+                       // let notelist = render_notes(app);
+                        rect.render_stateful_widget(notelist, chunks[0], &mut app.ticket_list_state);
+                    },
                 }
                 
             })?;
@@ -384,36 +419,11 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 },
                 MenuItem::ConfirmForm => todo!(),
+                MenuItem::Notes => todo!(),
             }
             
         }
         Ok(())  
-}
-
-
-#[derive(PartialEq)]
-pub enum TicketViewMode {
-    Open,
-    Closed,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum MenuItem {
-    Tickets,
-    EditForm,
-    NoteForm,
-    ConfirmForm,
-}
-
-impl From<MenuItem> for usize {
-    fn from(input: MenuItem) -> usize {
-        match input {
-            MenuItem::Tickets => 0,
-            MenuItem::EditForm => 1,
-            MenuItem::NoteForm => 2,
-            MenuItem::ConfirmForm => 3,
-        }
-    }
 }
 
 fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {

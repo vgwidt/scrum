@@ -156,6 +156,68 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     (list, ticket_detail)
 }
 
+// pub fn render_notes<'a>(app: &AppState) -> (Table<'a>) {
+//     let mut notes = Vec::new();
+
+//     // let mut selected_note = Note {
+//     //     text: "".to_owned(),
+//     //     updated_at: Utc::now(),
+//     //     created_at: todo!(),
+//     // };
+
+
+//     //If there is at least ticket
+//     // if app.selected_ticket.notes.is_some() {
+//     //     let notes_list = app.selected_ticket.notes.clone().unwrap();
+//     //     for note in notes_list {
+//     //         notes.push(note);
+//     //     }
+//     // }
+
+//     // //If there is at least ticket
+//     // if notes.len() > 0 {
+//     //     selected_note = notes
+//     //         .get(
+//     //             app.note_list_state
+//     //                 .selected()
+//     //                 .expect("note list state"),
+//     //         )
+//     //         .expect("selected note")
+//     //         .clone();
+//     // }
+
+//     // let rows = notes.iter().enumerate().map(|(i, item)| {
+//     //     Row::new(vec![
+//     //         Cell::from(item.id.to_string()),
+//     //         Cell::from(item.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
+//     //     ])
+//     // });
+
+//     let list = Table::new(rows)
+//         .block(Block::default().borders(Borders::ALL).title(" Notes"))
+//         .style(Style::default().fg(Color::White))
+//         .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black))
+//         .header(Row::new(vec![
+//             Cell::from(Span::styled(
+//                 "ID",
+//                 Style::default().add_modifier(Modifier::BOLD),
+//             )),
+//             Cell::from(Span::styled(
+//                 "Updated",
+//                 Style::default().add_modifier(Modifier::BOLD),
+//             )),
+//         ]))
+//         .widths(&[
+//             Constraint::Percentage(10),
+//             Constraint::Percentage(38),
+//         ]);
+
+
+//         list
+
+// }
+
+
 pub fn render_edit_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) {
     
     let input1 = Paragraph::new(app.input.as_ref())
