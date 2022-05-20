@@ -37,6 +37,22 @@ pub struct AppState {
     pub prompt: String,
 }
 
+impl AppState {
+    pub fn default() -> AppState {
+        AppState {
+            ticket_view_mode: TicketViewMode::Open,
+            active_menu_item: MenuItem::Tickets,
+            open_tickets: get_open_tickets(),
+            closed_tickets: get_closed_tickets(),
+            ticket_list_state: TableState::default(),
+            edit_ticket: Tickets::default(),
+            messages: Vec::new(),
+            input: String::new(),
+            prompt: "Enter Title".to_string(),
+        }
+    }
+}
+
 pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
 
         enable_raw_mode().expect("raw mode");
