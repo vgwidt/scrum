@@ -31,6 +31,7 @@ pub struct AppState {
     pub open_tickets: Vec<Tickets>,
     pub closed_tickets: Vec<Tickets>,
     pub ticket_list_state: TableState,
+    pub edit_ticket_state: ListState,
     pub edit_ticket: Tickets,
     pub messages: Vec<String>,
     pub input: String,
@@ -45,6 +46,7 @@ impl AppState {
             open_tickets: get_open_tickets(),
             closed_tickets: get_closed_tickets(),
             ticket_list_state: TableState::default(),
+            edit_ticket_state: ListState::default(),
             edit_ticket: Tickets::default(),
             messages: Vec::new(),
             input: String::new(),
@@ -62,7 +64,6 @@ pub enum TicketViewMode {
 #[derive(Copy, Clone, Debug)]
 pub enum MenuItem {
     Tickets,
-    Notes,
     EditForm,
     NoteForm,
     ConfirmForm,
@@ -72,10 +73,9 @@ impl From<MenuItem> for usize {
     fn from(input: MenuItem) -> usize {
         match input {
             MenuItem::Tickets => 0,
-            MenuItem::Notes => 1,
-            MenuItem::EditForm => todo!(),
-            MenuItem::NoteForm => todo!(),
-            MenuItem::ConfirmForm => todo!(),
+            MenuItem::EditForm => 1,
+            MenuItem::NoteForm => 2,
+            MenuItem::ConfirmForm => 3,
         }
     }
 }
@@ -116,7 +116,6 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
         let edit_menu_titles = vec!["Edit (Press escape to cancel)"]; //Convert to const?
         let note_menu_titles = vec!["Add note (Press escape to cancel)"]; //Convert to const?
         let confirm_menu_titles = vec!["Confirmation (Press escape to cancel)"]; //Convert to const?
-        let notes_menu_titles = vec!["Notes"]; //Convert to const?
         let mut menu_titles = &ticket_menu_titles;
     
         app.ticket_list_state.select(Some(0));
@@ -150,9 +149,6 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     MenuItem::ConfirmForm => {
                         menu_titles = &confirm_menu_titles;
                     },
-                    MenuItem::Notes => {
-                        menu_titles = &note_menu_titles;    
-                    }
                 }
                 let menu = menu_titles
                     .iter()
@@ -191,20 +187,29 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         rect.render_widget(right, tickets_chunks[1]);
                     }
                     MenuItem::EditForm => {
-                        let chunks = Layout::default().direction(Direction::Vertical)
-                            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
-                        let (input, output) = render_edit_form(app);
-                        rect.render_widget(input, chunks[0]);
-                        rect.render_widget(output, chunks[1]);
+                        let editchunk = Layout::default().direction(Direction::Vertical)
+                            .constraints([Constraint::Percentage(40),Constraint::Percentage(30),Constraint::Percentage(30)].as_ref())
+                            .split(chunks[1]);
+                        
+                        let chunk1 = Layout::default().direction(Direction::Vertical)
+                            .constraints([Constraint::Length(3), Constraint::Min(3)].as_ref(),).split(editchunk[0]);
+                        let chunk2 = Layout::default().direction(Direction::Horizontal)
+                            .constraints([Constraint::Percentage(33), Constraint::Percentage(34), Constraint::Percentage(33)].as_ref(),).split(editchunk[1]);
+                        let chunk3 = Layout::default().direction(Direction::Horizontal)
+                            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(editchunk[2]);
+                        let (titleinput, descinput, priorityinput) = render_edit_form(&app);
+                        rect.render_widget(titleinput, chunk1[0]);
+                        rect.render_widget(descinput, chunk1[1]);
+                        rect.render_stateful_widget(priorityinput, chunk2[0], &mut app.edit_ticket_state);
                         //Dangerous, if we add more fields this needs to be changed
                         if app.messages.len() < 3 {
-                         rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
+                         rect.set_cursor(chunk1[1].x + app.input.width() as u16 + 1, chunk1[1].y + 1,)
                         }
                     }
                     MenuItem::NoteForm => {
                         let chunks = Layout::default().direction(Direction::Vertical)
                             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
-                        let (input, output) = render_edit_form(app);
+                        let (input, output) = render_notes_form(app);
                         rect.render_widget(input, chunks[0]);
                         rect.render_widget(output, chunks[1]);
                         //Dangerous, if we add more fields this needs to be changed
@@ -213,10 +218,6 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         }
                     },
                     MenuItem::ConfirmForm => todo!(),
-                    MenuItem::Notes => {
-                       // let notelist = render_notes(app);
-                        rect.render_stateful_widget(notelist, chunks[0], &mut app.ticket_list_state);
-                    },
                 }
                 
             })?;
@@ -419,7 +420,6 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 },
                 MenuItem::ConfirmForm => todo!(),
-                MenuItem::Notes => todo!(),
             }
             
         }

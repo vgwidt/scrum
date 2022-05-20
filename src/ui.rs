@@ -1,3 +1,5 @@
+use std::vec;
+
 use chrono::{Utc, Local};
 use scrum_lib::*;
 use tui::{
@@ -46,6 +48,7 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
 
     //If there is at least ticket
     if tickets.len() > 0 {
+    //Gets selected ticket by index, but requires nifty alignment
     selected_ticket = tickets
         .get(
             app.ticket_list_state
@@ -156,69 +159,61 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     (list, ticket_detail)
 }
 
-// pub fn render_notes<'a>(app: &AppState) -> (Table<'a>) {
-//     let mut notes = Vec::new();
+pub fn render_edit_form<'a>(app: &AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>) {
+    
+    let input1 = Paragraph::new(app.input.clone())
+    .style(Style::default().fg(Color::Yellow))
+    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap { trim: true });
 
-//     // let mut selected_note = Note {
-//     //     text: "".to_owned(),
-//     //     updated_at: Utc::now(),
-//     //     created_at: todo!(),
-//     // };
+    let input2 = Paragraph::new("For Description")
+    .style(Style::default().fg(Color::Yellow))
+    .block(Block::default().borders(Borders::ALL).title("Input")).wrap(Wrap { trim: true });
 
+    //Create ListItem for each priority
+    let priorityrows = vec![
+        ListItem::new(Span::styled("High", Style::default().fg(Color::Yellow))),
+        ListItem::new(Span::styled("Medium", Style::default().fg(Color::Yellow))),
+        ListItem::new(Span::styled("Low", Style::default().fg(Color::Yellow))),
+    ];
 
-//     //If there is at least ticket
-//     // if app.selected_ticket.notes.is_some() {
-//     //     let notes_list = app.selected_ticket.notes.clone().unwrap();
-//     //     for note in notes_list {
-//     //         notes.push(note);
-//     //     }
-//     // }
+    let input3 = List::new(priorityrows)
+    .block(Block::default().borders(Borders::ALL).title("Priority"))
+    .style(Style::default().fg(Color::White))
+    .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
-//     // //If there is at least ticket
-//     // if notes.len() > 0 {
-//     //     selected_note = notes
-//     //         .get(
-//     //             app.note_list_state
-//     //                 .selected()
-//     //                 .expect("note list state"),
-//     //         )
-//     //         .expect("selected note")
-//     //         .clone();
-//     // }
-
-//     // let rows = notes.iter().enumerate().map(|(i, item)| {
-//     //     Row::new(vec![
-//     //         Cell::from(item.id.to_string()),
-//     //         Cell::from(item.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
-//     //     ])
-//     // });
-
-//     let list = Table::new(rows)
-//         .block(Block::default().borders(Borders::ALL).title(" Notes"))
-//         .style(Style::default().fg(Color::White))
-//         .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black))
-//         .header(Row::new(vec![
-//             Cell::from(Span::styled(
-//                 "ID",
-//                 Style::default().add_modifier(Modifier::BOLD),
-//             )),
-//             Cell::from(Span::styled(
-//                 "Updated",
-//                 Style::default().add_modifier(Modifier::BOLD),
-//             )),
-//         ]))
-//         .widths(&[
-//             Constraint::Percentage(10),
-//             Constraint::Percentage(38),
-//         ]);
+    let messages: Vec<ListItem> = app
+    .messages
+    .iter()
+    .enumerate()
+    .map(|(i, m)| {
+        let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
+        ListItem::new(content)
+    })
+    .collect();
+    let messages =
+    List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
+    
+    //create ListItem for each note in selected ticket
+    //Might want to rethink how we determine selected ticket at this stage?  How do we pass selected ticket to here?  Perhaps we hold it in AppState?
+    // let mut notespan = Vec::new();
+    // if app.selected_ticket.notes.is_some() {
+    //     let notes = app.selected_ticket.notes.clone().unwrap();
+    //     for note in notes {
+    //         notespan.push(
+    //             Spans::from(vec![
+    //             Span::raw(note.updated_at.format("%Y-%m-%d %H:%M").to_string()),
+    //             Span::styled(" Update: ", Style::default().fg(Color::Yellow)),
+    //             Span::raw(note.text.clone()),
+    //         ]));
+    //     }
+    // }
 
 
-//         list
+(input1, input2, input3)
+ 
+}
 
-// }
-
-
-pub fn render_edit_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) {
+pub fn render_notes_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) {
     
     let input1 = Paragraph::new(app.input.as_ref())
     .style(Style::default().fg(Color::Yellow))

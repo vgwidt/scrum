@@ -100,6 +100,16 @@ pub enum TicketPriority {
     High,
 }
 
+impl TicketPriority {
+    pub fn variants() -> Vec<String> {
+        vec![
+            String::from("Low"),
+            String::from("Medium"),
+            String::from("High"),
+        ]
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Request{
