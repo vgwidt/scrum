@@ -7,7 +7,9 @@ This is my first attempt at making a useful application, particularly for myself
 ## To-do / Issues
 
 ### High Priority
-- Allow notes to be edited, removed, or moved from one ticket to another (decide where to be able to select).
+- Allow notes to be edited, removed, or moved from one ticket to another.  To be done in the Edit ticket form, but may also add a notes only view.
+ 
+- Move delete function to ticket edit screen (currently only available on closed ticket view)
 
 - Allow scroll on ticket description
 
@@ -15,33 +17,32 @@ This is my first attempt at making a useful application, particularly for myself
 
 - Allow left right cursor movement on inputs
 
-- Create new input form with all required entries that can be tabbed through
-
-- Convert priority input to list item
-
 - More intuitive key inputs
 
 - Serious refactoring, removal of inefficiencies and excess checks
 
-- Checks for whether a ticket is selected or not isn't working like I imagined (if let Some(selected) = app.ticket_list_state.selected() {).  Currently checking length of open or closed instead (if not empty)
-
 - Cursor location does not work when text is wrapped
 
-- Sorting
+- Enable cursor for edit form
+
+- Closing/Opening ticket puts it at the bottom of the respective list
+
+- Need to use proper enums for things like priority.  Way too much manual code that will break if something is added.
 
 
 ### Medium Priority:
+
+- Enable Sorting (will require revisit of indexing)
 
 - Database backup feature
 
 - Proper database pathing (and possible user settings)
 
-- How selection between open and closed works is probably terrible and should be redone.  It currently relies on way too many checks to keep system afloat, there is definitely a way cleaner way to do it.
+- How selection between open and closed works is probably terrible and should be redone.  It currently relies on way too many checks to keep system afloat, there is definitely a way cleaner way to do it.  This will go in tandem with adding filters/incorporating a notes view.
 
-- Better indexing to determine selected item
+- Revisit how indexing works, particularly with open/closed tickets
 
-- If menus exactly the same, I could set an AppState variable that sets the amount of expected messages to save from having to create different forms
-
+- Add assignee and possible contact field
 
 ### Low Priority
 
