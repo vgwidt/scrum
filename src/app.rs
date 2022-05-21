@@ -245,11 +245,12 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             .constraints([Constraint::Percentage(33), Constraint::Percentage(34), Constraint::Percentage(33)].as_ref(),).split(editchunk[1]);
                         let chunk3 = Layout::default().direction(Direction::Horizontal)
                             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(editchunk[2]);
-                        let (titleinput, descinput, priorityinput, statusinput) = render_edit_form(app);
+                        let (titleinput, descinput, priorityinput, statusinput, notesinput) = render_edit_form(app);
                         rect.render_widget(titleinput, chunk1[0]);
                         rect.render_widget(descinput, chunk1[1]);
                         rect.render_stateful_widget(priorityinput, chunk2[0], &mut app.edit_priority_state);
                         rect.render_stateful_widget(statusinput, chunk2[1], &mut app.edit_status_state);
+                        rect.render_stateful_widget(notesinput, chunk3[0], &mut app.edit_note_state);
                     }
                     MenuItem::NoteForm => {
                         let chunks = Layout::default().direction(Direction::Vertical)

@@ -159,7 +159,7 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     (list, ticket_detail)
 }
 
-pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>, List<'a>) {
+pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>, List<'a>, List<'a>) {
     
     let input1 = Paragraph::new(app.edit_ticket.title.clone())
     .style(Style::default().fg(if app.edit_focus == EditItem::Title {Color::Yellow} else {Color::White},))
@@ -191,34 +191,28 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
     .style(Style::default().fg(if app.edit_focus == EditItem::Status {Color::Yellow} else {Color::White},))
     .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
-    let messages: Vec<ListItem> = app
-    .messages
-    .iter()
-    .enumerate()
-    .map(|(i, m)| {
-        let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-        ListItem::new(content)
-    })
-    .collect();
-    let messages =
-    List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
-    
+    //Create new ListItem for each note in edit_ticket
+    let mut notespan = Vec::new();
+    if app.edit_ticket.notes.is_some() {
+        let notes = app.edit_ticket.notes.clone().unwrap();
+        for note in notes {
+            notespan.push(
+                ListItem::new(Spans::from(vec![
+                    Span::raw(note.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
+                    Span::styled(" Update: ", Style::default().fg(Color::Yellow)),
+                    Span::raw(note.text.clone()),
+                ])));
 
-    // let mut notespan = Vec::new();
-    // if app.selected_ticket.notes.is_some() {
-    //     let notes = app.selected_ticket.notes.clone().unwrap();
-    //     for note in notes {
-    //         notespan.push(
-    //             Spans::from(vec![
-    //             Span::raw(note.updated_at.format("%Y-%m-%d %H:%M").to_string()),
-    //             Span::styled(" Update: ", Style::default().fg(Color::Yellow)),
-    //             Span::raw(note.text.clone()),
-    //         ]));
-    //     }
-    // }
+        }
+    }
+
+        let noteinput = List::new(notespan)
+        .block(Block::default().borders(Borders::ALL).title("Notes"))
+        .style(Style::default().fg(if app.edit_focus == EditItem::Notes {Color::Yellow} else {Color::White},))
+        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
 
-(input1, input2, input3, input4)
+(input1, input2, input3, input4, noteinput)
  
 }
 
