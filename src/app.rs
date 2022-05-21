@@ -33,6 +33,7 @@ pub struct AppState {
     pub ticket_list_state: TableState,
     pub edit_ticket_state: ListState,
     pub edit_ticket: Tickets,
+    pub edit_focus: EditItem,
     pub messages: Vec<String>,
     pub input: String,
     pub prompt: String,
@@ -48,10 +49,25 @@ impl AppState {
             ticket_list_state: TableState::default(),
             edit_ticket_state: ListState::default(),
             edit_ticket: Tickets::default(),
+            edit_focus: EditItem::Title,
             messages: Vec::new(),
             input: String::new(),
             prompt: "Enter Title".to_string(),
         }
+    }
+}
+
+pub enum EditItem {
+    Title,
+    Description,
+    Priority,
+    Status,
+    Notes,
+}
+
+impl EditItem {
+    pub fn set_focus(&mut self, new_focus: EditItem) {
+        *self = new_focus;
     }
 }
 
@@ -203,7 +219,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         rect.render_stateful_widget(priorityinput, chunk2[0], &mut app.edit_ticket_state);
                         //Dangerous, if we add more fields this needs to be changed
                         if app.messages.len() < 3 {
-                         rect.set_cursor(chunk1[1].x + app.input.width() as u16 + 1, chunk1[1].y + 1,)
+                         rect.set_cursor(chunk1[0].x + app.input.width() as u16 + 1, chunk1[0].y + 1,)
                         }
                     }
                     MenuItem::NoteForm => {
@@ -313,9 +329,6 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             KeyCode::Char('0')=> {
                                toggle_ticket_status(app).expect("Cannot toggle ticket status");                         
                             }
-                            KeyCode::Tab => {
-                                 app.active_menu_item = MenuItem::EditForm;
-                            }
                             _ => {}
                         },
                         Event::Tick => {}
@@ -325,41 +338,81 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     match rx.recv()? {           
                         Event::Input(event) => match event.code {
                         KeyCode::Enter => {
-                            app.messages.push(app.input.drain(..).collect());
-                            if app.messages.len() == 1 {
-                                app.prompt = "Enter Description".to_string();
-                                app.input = app.edit_ticket.description.to_string();
-                            }
-                            else if app.messages.len() == 2 {
-                                app.prompt = "Enter Priority".to_string();
-                                app.input = app.edit_ticket.priority.to_string();
-                            }
-                            else if app.messages.len() == 3 {
-                                app.prompt = "Hit Enter to save or Esc to cancel".to_string();
-                                app.input = app.messages[0].clone() + "\n" + &app.messages[1].clone() + "\n" + &app.messages[2].clone();
-                            }
-                            else if app.messages.len() >= 3 {
-                                add_ticket(app).unwrap();
-                                }
+                            // app.messages.push(app.input.drain(..).collect());
+                            // if app.messages.len() == 1 {
+                            //     app.prompt = "Enter Description".to_string();
+                            //     app.input = app.edit_ticket.description.to_string();
+                            // }
+                            // else if app.messages.len() == 2 {
+                            //     app.prompt = "Enter Priority".to_string();
+                            //     app.input = app.edit_ticket.priority.to_string();
+                            // }
+                            // else if app.messages.len() == 3 {
+                            //     app.prompt = "Hit Enter to save or Esc to cancel".to_string();
+                            //     app.input = app.messages[0].clone() + "\n" + &app.messages[1].clone() + "\n" + &app.messages[2].clone();
+                            // }
+                            // else if app.messages.len() >= 3 {
+                            //     add_ticket(app).unwrap();
+                            //     }
                         }
+                        KeyCode::F(5) => {
+                            //Save ticket
+                            add_ticket(app).unwrap();
+                            app.active_menu_item = MenuItem::Tickets;
+                        }
+                        KeyCode::Tab => {
+                            //Set focus to next EditItem
+                            app.edit_focus = match app.edit_focus {
+                               EditItem::Title => EditItem::Description,
+                               EditItem::Description => EditItem::Priority,
+                               EditItem::Priority => EditItem::Title,
+                               EditItem::Status => todo!(),
+                               EditItem::Notes => todo!(),
+                           };
+                       }
                         KeyCode::Char(c) => {
-                            //Only allow edit up to 3 lines
-                            if app.messages.len() < 3 {
-                            app.input.push(c);
+                            match app.edit_focus {
+                                EditItem::Title => {
+                                    app.edit_ticket.title.push(c);
+                                }
+                                EditItem::Description => {
+                                    app.edit_ticket.description.push(c);
+                                }
+                                EditItem::Priority => {}
+                                EditItem::Status => {}
+                                EditItem::Notes => {}
                             }
                         }
                         KeyCode::Backspace => {
-                            //Only allow edit up to 3 lines
-                            if app.messages.len() < 3 {
-                            app.input.pop();
+                            match app.edit_focus {
+                                EditItem::Title => {
+                                    app.edit_ticket.title.pop();
+                                }
+                                EditItem::Description => {
+                                    app.edit_ticket.description.pop();
+                                }
+                                EditItem::Priority => {}
+                                EditItem::Status => {}
+                                EditItem::Notes => {}
                             }
                         }
-                        KeyCode::Left => {
-                            //Move cursor left
+                        KeyCode::Up => {
+                            match app.edit_focus {
+                                EditItem::Title => {}
+                                EditItem::Description => {}
+                                EditItem::Priority => {}
+                                EditItem::Status => {}
+                                EditItem::Notes => {}
+                            }
                         }
-                        KeyCode::Right => {
-                            //Move cursor right
-    
+                        KeyCode::Down => {
+                            match app.edit_focus {
+                                EditItem::Title => {}
+                                EditItem::Description => {}
+                                EditItem::Priority => {}
+                                EditItem::Status => {}
+                                EditItem::Notes => {}
+                            }
                         }
                         KeyCode::Esc => {
                             //return to Ticket menu without saving
@@ -457,13 +510,11 @@ fn add_ticket (app: &mut AppState) -> Result<(), Error> {
         app.edit_ticket.updated_at = Utc::now();
 
         app.open_tickets.push(app.edit_ticket.clone());
-
     } else {
-
         //replace ticket at selected index
-        app.edit_ticket.title = app.messages[0].trim().to_string();
-        app.edit_ticket.description = app.messages[1].trim().to_string();
-        app.edit_ticket.priority = app.messages[2].trim().to_string();
+        // app.edit_ticket.title = app.messages[0].trim().to_string();
+        // app.edit_ticket.description = app.messages[1].trim().to_string();
+        // app.edit_ticket.priority = app.messages[2].trim().to_string();
         app.edit_ticket.updated_at = Utc::now();
 
         //Makes sure to update the right index by checking if on open or close page, very inefficient and requires blocking changing in other menus

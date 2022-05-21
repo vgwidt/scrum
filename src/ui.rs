@@ -161,13 +161,14 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
 
 pub fn render_edit_form<'a>(app: &AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>) {
     
-    let input1 = Paragraph::new(app.input.clone())
+
+    let input1 = Paragraph::new(app.edit_ticket.title.clone())
     .style(Style::default().fg(Color::Yellow))
     .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap { trim: true });
 
-    let input2 = Paragraph::new("For Description")
+    let input2 = Paragraph::new(app.edit_ticket.description.clone())
     .style(Style::default().fg(Color::Yellow))
-    .block(Block::default().borders(Borders::ALL).title("Input")).wrap(Wrap { trim: true });
+    .block(Block::default().borders(Borders::ALL).title("Description")).wrap(Wrap { trim: true });
 
     //Create ListItem for each priority
     let priorityrows = vec![
