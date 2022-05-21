@@ -3,6 +3,7 @@ mod db;
 mod app;
 mod ui;
 mod ticket;
+mod theme;
 
 use app::*;
 use ticket::*;

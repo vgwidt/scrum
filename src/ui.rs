@@ -10,6 +10,7 @@ use tui::{
     }, layout::{Constraint, Alignment},
 };
 use crate::app::*;
+use crate::theme::*;
 
 
 pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {

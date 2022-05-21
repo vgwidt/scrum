@@ -23,6 +23,7 @@ use scrum_lib::*;
 use crate::{db::*, Event};
 use crate::ui::*;
 use crate::ticket::*;
+use crate::theme::*;
 
 const TICKRATE: u64 = 1000;
 
