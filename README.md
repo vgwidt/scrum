@@ -11,8 +11,6 @@ This is my first attempt at making a useful application, particularly for myself
  
 - Move delete function to ticket edit screen (currently only available on closed ticket view)
 
-- Allow scroll on ticket description
-
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
 - Allow left right cursor movement on inputs
@@ -43,6 +41,8 @@ This is my first attempt at making a useful application, particularly for myself
 - Revisit how indexing works, particularly with open/closed tickets
 
 - Add assignee and possible contact field
+
+- Limit scrolling of ticket description (no idea how to do this)
 
 ### Low Priority
 

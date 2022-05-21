@@ -247,3 +247,24 @@ pub fn render_notes_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>)
 (input1, messages)
  
 }
+
+pub fn render_help_form<'a>(app: &'a mut AppState) -> Paragraph<'a> {
+    
+    let help = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Sorting")]),
+        Spans::from(vec![Span::raw("F1: Sort by ID")]),
+        Spans::from(vec![Span::raw("F2: Sort by Title")]),
+        Spans::from(vec![Span::raw("F3: Sort by Priority")]),
+        Spans::from(vec![Span::raw("F4: Sort by Last Updated")]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .title("Help")
+            .border_type(BorderType::Plain),
+    );
+
+    help
+}

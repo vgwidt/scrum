@@ -41,6 +41,7 @@ pub struct AppState {
     pub input: String,
     pub prompt: String,
     pub scroll: u16,
+    pub sort_by: SortBy,
 }
 
 impl AppState {
@@ -60,6 +61,7 @@ impl AppState {
             input: String::new(),
             prompt: "Enter Title".to_string(),
             scroll: 0,
+            sort_by: SortBy::ID,
         }
     }
 }
@@ -91,6 +93,14 @@ pub enum MenuItem {
     EditForm,
     NoteForm,
     ConfirmForm,
+    Help,
+}
+
+pub enum SortBy {
+    ID,
+    Title,
+    Priority,
+    Updated,
 }
 
 impl From<MenuItem> for usize {
@@ -100,6 +110,7 @@ impl From<MenuItem> for usize {
             MenuItem::EditForm => 1,
             MenuItem::NoteForm => 2,
             MenuItem::ConfirmForm => 3,
+            MenuItem::Help => 4,
         }
     }
 }
@@ -136,11 +147,12 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     
-        let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Note (Add)", "Toggle Open/Closed View", "0: Toggle Open/Close", "Quit"];
+
         let edit_menu_titles = vec!["Edit (Press escape to cancel)"]; //Convert to const?
         let note_menu_titles = vec!["Add note (Press escape to cancel)"]; //Convert to const?
         let confirm_menu_titles = vec!["Confirmation (Press escape to cancel)"]; //Convert to const?
-        let mut menu_titles = &ticket_menu_titles;
+        let help_menu_titles = vec!["Help (Press escape to return)"]; //Convert to const?
+        
     
         app.ticket_list_state.select(Some(0));
     
@@ -159,7 +171,14 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         .as_ref(),
                     )
                     .split(size);
-    
+                
+                let openorclosed = match app.ticket_view_mode {
+                    TicketViewMode::Open => "View Closed",
+                    TicketViewMode::Closed => "View Open",
+                };
+                let ticket_menu_titles = vec!["Tickets", "Add", "Edit", "Note (+)", openorclosed, "Help", "Quit"];
+                let mut menu_titles = &ticket_menu_titles;
+                    
                 match app.active_menu_item {
                     MenuItem::Tickets => {
                         menu_titles = &ticket_menu_titles;
@@ -173,6 +192,10 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     MenuItem::ConfirmForm => {
                         menu_titles = &confirm_menu_titles;
                     },
+                    MenuItem::Help => {
+                        menu_titles = &help_menu_titles
+                    },
+                    
                 }
                 let menu = menu_titles
                     .iter()
@@ -238,6 +261,10 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         }
                     },
                     MenuItem::ConfirmForm => todo!(),
+                    MenuItem::Help => {
+                        let text = render_help_form(app);
+                        rect.render_widget(text, chunks[1]);
+                    },
                 }
                 
             })?;
@@ -254,6 +281,9 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                                 execute!(stdout, LeaveAlternateScreen)?;
                                 break;
                             }
+                            KeyCode::Char('h') => {
+                                app.active_menu_item = MenuItem::Help;
+                            }
                             KeyCode::Char('a') => {
                                     init_add_ticket(app).expect("Cannot add ticket");
                                     app.edit_focus = EditItem::Title;
@@ -262,8 +292,8 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                                 edit_ticket_at_index(app).expect("Cannot edit ticket");
                                 app.edit_focus = EditItem::Title;
                             }
-                            KeyCode::Char('0') => {
-                                //if event.modifiers == KeyModifiers::CONTROL {
+                            KeyCode::Char('k') => {
+                                if event.modifiers == KeyModifiers::CONTROL {
                                 match app.ticket_view_mode {
                                     TicketViewMode::Open => {
                                         //delete_ticket_at_index(&mut app).expect("Cannot delete ticket");
@@ -272,8 +302,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                                         remove_ticket_at_index(app).expect("Cannot remove ticket");
                                     }
                                 }
-                            //}
-                                
+                            }
                             }
                             KeyCode::PageDown => {
                                 app.scroll += 1;   
@@ -283,7 +312,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                                     app.scroll -= 1;
                                 } 
                             }
-                            KeyCode::Char('t') => {
+                            KeyCode::Char('v') => {
                                 match app.ticket_view_mode {
                                     TicketViewMode::Open => {
                                         app.ticket_view_mode = TicketViewMode::Closed;
@@ -341,6 +370,22 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                                         app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                                     }
                                 }
+                            }
+                            KeyCode::F(1) => {
+                                app.sort_by = SortBy::ID;
+                                sort(app);
+                            }
+                            KeyCode::F(2) => {
+                                app.sort_by = SortBy::Title;
+                                sort(app);
+                            }
+                            KeyCode::F(3) => {
+                                app.sort_by = SortBy::Priority;
+                                sort(app);
+                            }
+                            KeyCode::F(4) => {
+                                app.sort_by = SortBy::Updated;
+                                sort(app);
                             }
                             _ => {}
                         },
@@ -516,6 +561,15 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 },
                 MenuItem::ConfirmForm => todo!(),
+                MenuItem::Help =>  match rx.recv()? {           
+                    Event::Input(event) => match event.code {
+                    KeyCode::Esc => {
+                        app.active_menu_item = MenuItem::Tickets;
+                    }
+                    _ => {}
+                },
+                    Event::Tick => {}
+                },
             }
             
         }

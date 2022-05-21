@@ -252,3 +252,52 @@ pub fn toggle_ticket_status(app: &mut AppState) -> Result<(), Error> {
     }
     Ok(())
 }
+
+pub fn sort(app: &mut AppState) {
+    match app.sort_by {
+        SortBy::ID => {
+            //Sort by ID
+            match app.ticket_view_mode {
+                TicketViewMode::Open => {
+                    app.open_tickets.sort_by(|a, b| a.id.cmp(&b.id));
+                },
+                TicketViewMode::Closed => {
+                    app.closed_tickets.sort_by(|a, b| a.id.cmp(&b.id));
+                },
+            }
+        }
+        SortBy::Title => {
+            //Sort by Title
+            match app.ticket_view_mode {
+                TicketViewMode::Open => {
+                    app.open_tickets.sort_by(|a, b| a.title.cmp(&b.title));
+                },
+                TicketViewMode::Closed => {
+                    app.closed_tickets.sort_by(|a, b| a.title.cmp(&b.title));
+                },
+            }
+        },
+        SortBy::Priority => {
+            //Sort by Priority
+            match app.ticket_view_mode {
+                TicketViewMode::Open => {
+                    app.open_tickets.sort_by(|a, b| a.priority.cmp(&b.priority));
+                },
+                TicketViewMode::Closed => {
+                    app.closed_tickets.sort_by(|a, b| a.priority.cmp(&b.priority));
+                },
+            }
+        },
+        SortBy::Updated => {
+            //Sort by Updated
+            match app.ticket_view_mode {
+                TicketViewMode::Open => {
+                    app.open_tickets.sort_by(|a, b| a.updated_at.cmp(&b.updated_at));
+                },
+                TicketViewMode::Closed => {
+                    app.closed_tickets.sort_by(|a, b| a.updated_at.cmp(&b.updated_at));
+                },
+            }
+        },
+    }
+}
