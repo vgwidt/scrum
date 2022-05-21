@@ -2,8 +2,10 @@ mod client;
 mod db;
 mod app;
 mod ui;
+mod ticket;
 
 use app::*;
+use ticket::*;
 
 enum Event<I> {
     Input(I),

@@ -158,9 +158,8 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     (list, ticket_detail)
 }
 
-pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>) {
+pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>, List<'a>) {
     
-
     let input1 = Paragraph::new(app.edit_ticket.title.clone())
     .style(Style::default().fg(if app.edit_focus == EditItem::Title {Color::Yellow} else {Color::White},))
     .block(Block::default().borders(Borders::ALL).title("Title")).wrap(Wrap { trim: true });
@@ -179,6 +178,16 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
     let input3 = List::new(priorityrows)
     .block(Block::default().borders(Borders::ALL).title("Priority"))
     .style(Style::default().fg(if app.edit_focus == EditItem::Priority {Color::Yellow} else {Color::White},))
+    .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+
+    let statusrows = vec![
+        ListItem::new(Span::styled("Open", Style::default().fg(Color::White))),
+        ListItem::new(Span::styled("Closed", Style::default().fg(Color::White))),
+    ];
+
+    let input4 = List::new(statusrows)
+    .block(Block::default().borders(Borders::ALL).title("Status"))
+    .style(Style::default().fg(if app.edit_focus == EditItem::Status {Color::Yellow} else {Color::White},))
     .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
     let messages: Vec<ListItem> = app
@@ -208,7 +217,7 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
     // }
 
 
-(input1, input2, input3)
+(input1, input2, input3, input4)
  
 }
 
