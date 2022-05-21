@@ -153,7 +153,7 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
                 .style(Style::default().fg(Color::White))
                 .title(" Ticket Detail")
                 .border_type(BorderType::Plain),
-        ).wrap(Wrap { trim: true }).scroll((0, app.scroll));
+        ).wrap(Wrap { trim: true }).scroll((app.scroll, 0));
     
     (list, ticket_detail)
 }

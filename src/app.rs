@@ -275,9 +275,14 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             //}
                                 
                             }
-                            // KeyCode::PageDown => {
-                            //     app.scroll += 1;   
-                            // }
+                            KeyCode::PageDown => {
+                                app.scroll += 1;   
+                            }
+                            KeyCode::PageUp => {
+                                if app.scroll > 0 {
+                                    app.scroll -= 1;
+                                } 
+                            }
                             KeyCode::Char('t') => {
                                 match app.ticket_view_mode {
                                     TicketViewMode::Open => {
@@ -298,9 +303,9 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             KeyCode::Down => {      
                                 if let Some(selected) = app.ticket_list_state.selected() {
-    
+                                    app.scroll = 0;
                                     let mut amount_tickets = 0;
-    
+                                    
                                     if app.ticket_view_mode == TicketViewMode::Open {
                                         amount_tickets = app.open_tickets.len().try_into().unwrap();
                                     } else if app.ticket_view_mode == TicketViewMode::Closed {
@@ -319,7 +324,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             KeyCode::Up => {
                                 if let Some(selected) = app.ticket_list_state.selected() {
-                                    
+                                    app.scroll = 0;
                                     let mut amount_tickets = 0;
             
                                     if app.ticket_view_mode == TicketViewMode::Open {
