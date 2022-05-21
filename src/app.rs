@@ -40,6 +40,7 @@ pub struct AppState {
     pub messages: Vec<String>,
     pub input: String,
     pub prompt: String,
+    pub scroll: u16,
 }
 
 impl AppState {
@@ -58,6 +59,7 @@ impl AppState {
             messages: Vec::new(),
             input: String::new(),
             prompt: "Enter Title".to_string(),
+            scroll: 0,
         }
     }
 }
@@ -273,6 +275,9 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             //}
                                 
                             }
+                            // KeyCode::PageDown => {
+                            //     app.scroll += 1;   
+                            // }
                             KeyCode::Char('t') => {
                                 match app.ticket_view_mode {
                                     TicketViewMode::Open => {
@@ -331,9 +336,6 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                                         app.ticket_list_state.select(Some((amount_tickets - 1).try_into().unwrap()));
                                     }
                                 }
-                            }
-                            KeyCode::Char('0')=> {
-                               toggle_ticket_status(app).expect("Cannot toggle ticket status");                         
                             }
                             _ => {}
                         },
