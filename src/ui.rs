@@ -34,7 +34,6 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
         }
     }
 
-
     let mut selected_ticket = Tickets {
         id: 0,
         title: "".to_owned(),
@@ -159,27 +158,27 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     (list, ticket_detail)
 }
 
-pub fn render_edit_form<'a>(app: &AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>) {
+pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>) {
     
 
     let input1 = Paragraph::new(app.edit_ticket.title.clone())
-    .style(Style::default().fg(Color::Yellow))
-    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap { trim: true });
+    .style(Style::default().fg(if app.edit_focus == EditItem::Title {Color::Yellow} else {Color::White},))
+    .block(Block::default().borders(Borders::ALL).title("Title")).wrap(Wrap { trim: true });
 
     let input2 = Paragraph::new(app.edit_ticket.description.clone())
-    .style(Style::default().fg(Color::Yellow))
+    .style(Style::default().fg(if app.edit_focus == EditItem::Description {Color::Yellow} else {Color::White},))
     .block(Block::default().borders(Borders::ALL).title("Description")).wrap(Wrap { trim: true });
 
     //Create ListItem for each priority
     let priorityrows = vec![
-        ListItem::new(Span::styled("High", Style::default().fg(Color::Yellow))),
-        ListItem::new(Span::styled("Medium", Style::default().fg(Color::Yellow))),
-        ListItem::new(Span::styled("Low", Style::default().fg(Color::Yellow))),
+        ListItem::new(Span::styled("High", Style::default().fg(Color::White))),
+        ListItem::new(Span::styled("Medium", Style::default().fg(Color::White))),
+        ListItem::new(Span::styled("Low", Style::default().fg(Color::White))),
     ];
 
     let input3 = List::new(priorityrows)
     .block(Block::default().borders(Borders::ALL).title("Priority"))
-    .style(Style::default().fg(Color::White))
+    .style(Style::default().fg(if app.edit_focus == EditItem::Priority {Color::Yellow} else {Color::White},))
     .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
     let messages: Vec<ListItem> = app
@@ -194,8 +193,7 @@ pub fn render_edit_form<'a>(app: &AppState) -> (Paragraph<'a>, Paragraph<'a>, Li
     let messages =
     List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     
-    //create ListItem for each note in selected ticket
-    //Might want to rethink how we determine selected ticket at this stage?  How do we pass selected ticket to here?  Perhaps we hold it in AppState?
+
     // let mut notespan = Vec::new();
     // if app.selected_ticket.notes.is_some() {
     //     let notes = app.selected_ticket.notes.clone().unwrap();

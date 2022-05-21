@@ -57,6 +57,7 @@ impl AppState {
     }
 }
 
+#[derive(PartialEq)]
 pub enum EditItem {
     Title,
     Description,
@@ -213,14 +214,10 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             .constraints([Constraint::Percentage(33), Constraint::Percentage(34), Constraint::Percentage(33)].as_ref(),).split(editchunk[1]);
                         let chunk3 = Layout::default().direction(Direction::Horizontal)
                             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(editchunk[2]);
-                        let (titleinput, descinput, priorityinput) = render_edit_form(&app);
+                        let (titleinput, descinput, priorityinput) = render_edit_form(app);
                         rect.render_widget(titleinput, chunk1[0]);
                         rect.render_widget(descinput, chunk1[1]);
                         rect.render_stateful_widget(priorityinput, chunk2[0], &mut app.edit_ticket_state);
-                        //Dangerous, if we add more fields this needs to be changed
-                        if app.messages.len() < 3 {
-                         rect.set_cursor(chunk1[0].x + app.input.width() as u16 + 1, chunk1[0].y + 1,)
-                        }
                     }
                     MenuItem::NoteForm => {
                         let chunks = Layout::default().direction(Direction::Vertical)
@@ -228,9 +225,8 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         let (input, output) = render_notes_form(app);
                         rect.render_widget(input, chunks[0]);
                         rect.render_widget(output, chunks[1]);
-                        //Dangerous, if we add more fields this needs to be changed
                         if app.messages.len() < 1 {
-                         rect.set_cursor(chunks[1].x + app.input.width() as u16 + 1, chunks[1].y + 1,)
+                        rect.set_cursor(chunks[0].x + app.input.width() as u16 + 1, chunks[0].y + 1,)  //Needs to be updated now that there are separate fields
                         }
                     },
                     MenuItem::ConfirmForm => todo!(),
@@ -252,9 +248,11 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             KeyCode::Char('a') => {
                                     init_add_ticket(app).expect("Cannot add ticket");
+                                    app.edit_focus = EditItem::Title;
                         }
                             KeyCode::Char('e') => {
                                 edit_ticket_at_index(app).expect("Cannot edit ticket");
+                                app.edit_focus = EditItem::Title;
                             }
                             KeyCode::F(8) => {
                                 match app.ticket_view_mode {
@@ -338,23 +336,17 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     match rx.recv()? {           
                         Event::Input(event) => match event.code {
                         KeyCode::Enter => {
-                            // app.messages.push(app.input.drain(..).collect());
-                            // if app.messages.len() == 1 {
-                            //     app.prompt = "Enter Description".to_string();
-                            //     app.input = app.edit_ticket.description.to_string();
-                            // }
-                            // else if app.messages.len() == 2 {
-                            //     app.prompt = "Enter Priority".to_string();
-                            //     app.input = app.edit_ticket.priority.to_string();
-                            // }
-                            // else if app.messages.len() == 3 {
-                            //     app.prompt = "Hit Enter to save or Esc to cancel".to_string();
-                            //     app.input = app.messages[0].clone() + "\n" + &app.messages[1].clone() + "\n" + &app.messages[2].clone();
-                            // }
-                            // else if app.messages.len() >= 3 {
-                            //     add_ticket(app).unwrap();
-                            //     }
+                            match app.edit_focus {
+                                EditItem::Title => app.edit_focus = EditItem::Description,
+                                EditItem::Description => app.edit_focus = EditItem::Priority,
+                                EditItem::Priority => {
+                                 add_ticket(app).unwrap();
+                                 app.active_menu_item = MenuItem::Tickets;
+                                },
+                                EditItem::Status => todo!(),
+                                EditItem::Notes => todo!(),
                         }
+                    }
                         KeyCode::F(5) => {
                             //Save ticket
                             add_ticket(app).unwrap();
@@ -363,13 +355,24 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Tab => {
                             //Set focus to next EditItem
                             app.edit_focus = match app.edit_focus {
-                               EditItem::Title => EditItem::Description,
-                               EditItem::Description => EditItem::Priority,
-                               EditItem::Priority => EditItem::Title,
-                               EditItem::Status => todo!(),
-                               EditItem::Notes => todo!(),
-                           };
+                                EditItem::Title => EditItem::Description,
+                                EditItem::Description => EditItem::Priority,
+                                EditItem::Priority => EditItem::Title,
+                                EditItem::Status => todo!(),
+                                EditItem::Notes => todo!(),
+                            };
                        }
+                        //Shift Tab
+                        KeyCode::BackTab => {
+                            //Set focus to previous EditItem
+                            app.edit_focus = match app.edit_focus {
+                                EditItem::Title => EditItem::Priority,
+                                EditItem::Description => EditItem::Title,
+                                EditItem::Priority => EditItem::Description,
+                                EditItem::Status => todo!(),
+                                EditItem::Notes => todo!(),
+                            };
+                        }
                         KeyCode::Char(c) => {
                             match app.edit_focus {
                                 EditItem::Title => {
@@ -400,7 +403,13 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             match app.edit_focus {
                                 EditItem::Title => {}
                                 EditItem::Description => {}
-                                EditItem::Priority => {}
+                                EditItem::Priority => {
+                                    if app.edit_ticket_state.selected() == Some(0) {
+                                        app.edit_ticket_state.select(Some(2));
+                                    } else {
+                                        app.edit_ticket_state.select(Some(app.edit_ticket_state.selected().unwrap() - 1));
+                                    }
+                                }
                                 EditItem::Status => {}
                                 EditItem::Notes => {}
                             }
@@ -409,7 +418,14 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             match app.edit_focus {
                                 EditItem::Title => {}
                                 EditItem::Description => {}
-                                EditItem::Priority => {}
+                                EditItem::Priority => {
+                                    if app.edit_ticket_state.selected() == Some(2) {
+                                        app.edit_ticket_state.select(Some(0));
+                                    } else {
+                                        app.edit_ticket_state.select(Some(app.edit_ticket_state.selected().unwrap() + 1));
+                                    }
+
+                                }
                                 EditItem::Status => {}
                                 EditItem::Notes => {}
                             }
@@ -483,6 +499,11 @@ fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
 
     app.edit_ticket.id = -7;
     app.edit_ticket.status = TicketStatus::Open;
+    app.edit_ticket.title = String::new();
+    app.edit_ticket.description = String::new();
+    app.edit_ticket.priority = "Low".to_string();
+
+    app.edit_ticket_state.select(Some(0)); //Can be fixed to match set priority above
 
     app.prompt = "Enter Title".to_string();
     app.active_menu_item = MenuItem::EditForm;
@@ -492,6 +513,16 @@ fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
 fn add_ticket (app: &mut AppState) -> Result<(), Error> {
     if let Some(selected) = app.ticket_list_state.selected() {
     //if new
+
+        //This can be fixed by using ticket priority enum with impl fn
+        if app.edit_ticket_state.selected() == Some(0) {
+            app.edit_ticket.priority = "High".to_string();
+        } else if app.edit_ticket_state.selected() == Some(1) {
+            app.edit_ticket.priority = "Medium".to_string();
+        } else if app.edit_ticket_state.selected() == Some(2) {
+            app.edit_ticket.priority = "Low".to_string();
+        }
+
     if app.edit_ticket.id == -7 {
         //Generate unique ID
         let parsed: Vec<Tickets> = read_db().unwrap();
@@ -502,19 +533,12 @@ fn add_ticket (app: &mut AppState) -> Result<(), Error> {
             }
         }
         app.edit_ticket.id = max_id + 1;
-
-        app.edit_ticket.title = app.messages[0].trim().to_string();
-        app.edit_ticket.description = app.messages[1].trim().to_string();
-        app.edit_ticket.priority = app.messages[2].trim().to_string();
         app.edit_ticket.created_at = Utc::now();
         app.edit_ticket.updated_at = Utc::now();
 
+
         app.open_tickets.push(app.edit_ticket.clone());
     } else {
-        //replace ticket at selected index
-        // app.edit_ticket.title = app.messages[0].trim().to_string();
-        // app.edit_ticket.description = app.messages[1].trim().to_string();
-        // app.edit_ticket.priority = app.messages[2].trim().to_string();
         app.edit_ticket.updated_at = Utc::now();
 
         //Makes sure to update the right index by checking if on open or close page, very inefficient and requires blocking changing in other menus
@@ -527,6 +551,8 @@ fn add_ticket (app: &mut AppState) -> Result<(), Error> {
             },
         }    
     }
+
+
 
 
     update_db(&app);
@@ -563,6 +589,9 @@ pub fn edit_ticket_at_index(app: &mut AppState) -> Result<(), Error> {
             },
         }
 
+        app.edit_ticket_state.select(
+            if app.edit_ticket.priority == "High" {Some(0)} else if app.edit_ticket.priority == "Medium" {Some(1)} else {Some(2)}  
+          );
      }
     
     Ok(())

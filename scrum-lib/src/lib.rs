@@ -101,12 +101,20 @@ pub enum TicketPriority {
 }
 
 impl TicketPriority {
-    pub fn variants() -> Vec<String> {
-        vec![
-            String::from("Low"),
-            String::from("Medium"),
-            String::from("High"),
-        ]
+    pub fn get_priority(&self) -> String {
+        match self {
+            TicketPriority::Low => String::from("Low"),
+            TicketPriority::Medium => String::from("Medium"),
+            TicketPriority::High => String::from("High"),
+        }
+    }
+    pub fn int_to_string(priority: i32) -> String {
+        match priority {
+            1 => String::from("Low"),
+            2 => String::from("Medium"),
+            3 => String::from("High"),
+            _ => String::from(""),
+        }
     }
 }
 
