@@ -9,6 +9,8 @@ This is my first attempt at making a useful application, particularly for myself
 ### High Priority
 
 - Allow notes to be edited, removed, or moved from one ticket to another.  To be done in the Edit ticket form, but may also add a notes only view.
+
+- Revamp add note form.  Get rid of message box, add wrapping, and remove the "messages" AppState vector.  Re-design with ability to modify notes in mind.
  
 - Move delete function to ticket edit screen (currently only available on closed ticket view)
 
