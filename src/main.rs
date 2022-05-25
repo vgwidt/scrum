@@ -19,6 +19,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = AppState::default();
     //Initialize DB
     update_ticket_count(&mut app);
+    //Initialize theme
+    let theme = theme::Theme::default();
     //Run the app
     run(&mut app).unwrap();
 

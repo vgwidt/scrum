@@ -7,21 +7,20 @@ This is my first attempt at making a useful application, particularly for myself
 ## To-do / Issues
 
 ### High Priority
+
 - Allow notes to be edited, removed, or moved from one ticket to another.  To be done in the Edit ticket form, but may also add a notes only view.
  
 - Move delete function to ticket edit screen (currently only available on closed ticket view)
 
 - Add length limit to fields and more robust string checking for adding/editing tickets
 
-- Allow left right cursor movement on inputs
-
 - More intuitive key inputs
 
 - Serious refactoring, removal of inefficiencies and excess checks
 
-- Cursor location does not work when text is wrapped
+- Allow left right cursor movement on inputs
 
-- Enable cursor for edit form
+- Enable cursor (our own calculations are the only way: https://github.com/fdehau/tui-rs/pull/309)
 
 - Closing/Opening ticket puts it at the bottom of the respective list
 
@@ -30,7 +29,7 @@ This is my first attempt at making a useful application, particularly for myself
 
 ### Medium Priority:
 
-- Enable Sorting (will require revisit of indexing)
+- Auto-sorting after actions such as ticket open/close
 
 - Database backup feature
 
@@ -42,7 +41,7 @@ This is my first attempt at making a useful application, particularly for myself
 
 - Add assignee and possible contact field
 
-- Limit scrolling of ticket description (no idea how to do this)
+- Limit scrolling of ticket description.  This currently would require calculating y ourselves based on content and window or rectangle sizes.
 
 ### Low Priority
 

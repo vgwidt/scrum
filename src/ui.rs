@@ -71,8 +71,8 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
 
     let list = Table::new(rows)
         .block(Block::default().borders(Borders::ALL).title(" Tickets"))
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black))
+        .style(Style::default().fg(app.theme.text))
+        .highlight_style(Style::default().bg(app.theme.selection).fg(Color::Black))
         .header(Row::new(vec![
             Cell::from(Span::styled(
                 "ID",
@@ -111,7 +111,7 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
             notespan.push(
                 Spans::from(vec![
                 Span::raw(note.updated_at.format("%Y-%m-%d %H:%M").to_string()),
-                Span::styled(" Update: ", Style::default().fg(Color::Yellow)),
+                Span::styled(" Update: ", Style::default().fg(app.theme.selection)),
                 Span::raw(note.text.clone()),
             ]));
         }
@@ -119,25 +119,25 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
 
     let mut text = vec![
         Spans::from(vec![
-            Span::styled("ID: ", Style::default().fg(Color::Yellow)),
+            Span::styled("ID: ", Style::default().fg(app.theme.selection)),
             Span::raw(selected_ticket.id.to_string()),
-            Span::styled(" | Status: ", Style::default().fg(Color::Yellow)),
+            Span::styled(" | Status: ", Style::default().fg(app.theme.selection)),
             Span::raw(selected_ticket.status.to_string().to_owned()),
-            Span::styled(" | Priority: ", Style::default().fg(Color::Yellow)),
+            Span::styled(" | Priority: ", Style::default().fg(app.theme.selection)),
             Span::raw(selected_ticket.priority.to_string().to_owned()),
-            Span::styled(" | Created: ", Style::default().fg(Color::Yellow)),
+            Span::styled(" | Created: ", Style::default().fg(app.theme.selection)),
             Span::raw(selected_ticket.created_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
-            Span::styled(" | Updated: ", Style::default().fg(Color::Yellow)),
+            Span::styled(" | Updated: ", Style::default().fg(app.theme.selection)),
             Span::raw(selected_ticket.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
         ]),
         Spans::from(vec![Span::raw("\n")]),
         Spans::from(vec![
-        Span::styled("Title: ", Style::default().fg(Color::Yellow)),
+        Span::styled("Title: ", Style::default().fg(app.theme.selection)),
         Span::raw(selected_ticket.title.clone()),
     ]),
     Spans::from(vec![Span::raw("\n")]),
     Spans::from(vec![
-        Span::styled("Description: ", Style::default().fg(Color::Yellow)),
+        Span::styled("Description: ", Style::default().fg(app.theme.selection)),
         Span::raw(selected_ticket.description.clone()),
     ]),
     Spans::from(vec![Span::raw("\n")]),
@@ -151,10 +151,13 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
+                .style(Style::default().fg(app.theme.text))
                 .title(" Ticket Detail")
                 .border_type(BorderType::Plain),
         ).wrap(Wrap { trim: true }).scroll((app.scroll, 0));
+
+    //calculate max scroll based on length of text
+
     
     (list, ticket_detail)
 }
@@ -162,34 +165,34 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
 pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>, List<'a>, List<'a>, List<'a>) {
     
     let input1 = Paragraph::new(app.edit_ticket.title.clone())
-    .style(Style::default().fg(if app.edit_focus == EditItem::Title {Color::Yellow} else {Color::White},))
+    .style(Style::default().fg(if app.edit_focus == EditItem::Title {app.theme.selection} else {app.theme.text},))
     .block(Block::default().borders(Borders::ALL).title("Title")).wrap(Wrap { trim: true });
 
     let input2 = Paragraph::new(app.edit_ticket.description.clone())
-    .style(Style::default().fg(if app.edit_focus == EditItem::Description {Color::Yellow} else {Color::White},))
+    .style(Style::default().fg(if app.edit_focus == EditItem::Description {app.theme.selection} else {app.theme.text},))
     .block(Block::default().borders(Borders::ALL).title("Description")).wrap(Wrap { trim: true });
 
     //Create ListItem for each priority
     let priorityrows = vec![
-        ListItem::new(Span::styled("High", Style::default().fg(Color::White))),
-        ListItem::new(Span::styled("Medium", Style::default().fg(Color::White))),
-        ListItem::new(Span::styled("Low", Style::default().fg(Color::White))),
+        ListItem::new(Span::styled("High", Style::default().fg(app.theme.text))),
+        ListItem::new(Span::styled("Medium", Style::default().fg(app.theme.text))),
+        ListItem::new(Span::styled("Low", Style::default().fg(app.theme.text))),
     ];
 
     let input3 = List::new(priorityrows)
     .block(Block::default().borders(Borders::ALL).title("Priority"))
-    .style(Style::default().fg(if app.edit_focus == EditItem::Priority {Color::Yellow} else {Color::White},))
-    .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+    .style(Style::default().fg(if app.edit_focus == EditItem::Priority {app.theme.selection} else {app.theme.text},))
+    .highlight_style(Style::default().bg(app.theme.selection).fg(Color::Black));
 
     let statusrows = vec![
-        ListItem::new(Span::styled("Open", Style::default().fg(Color::White))),
-        ListItem::new(Span::styled("Closed", Style::default().fg(Color::White))),
+        ListItem::new(Span::styled("Open", Style::default().fg(app.theme.text))),
+        ListItem::new(Span::styled("Closed", Style::default().fg(app.theme.text))),
     ];
 
     let input4 = List::new(statusrows)
     .block(Block::default().borders(Borders::ALL).title("Status"))
-    .style(Style::default().fg(if app.edit_focus == EditItem::Status {Color::Yellow} else {Color::White},))
-    .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+    .style(Style::default().fg(if app.edit_focus == EditItem::Status {app.theme.selection} else {app.theme.text},))
+    .highlight_style(Style::default().bg(app.theme.selection).fg(Color::Black));
 
     //Create new ListItem for each note in edit_ticket
     let mut notespan = Vec::new();
@@ -199,7 +202,7 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
             notespan.push(
                 ListItem::new(Spans::from(vec![
                     Span::raw(note.updated_at.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()),
-                    Span::styled(" Update: ", Style::default().fg(Color::Yellow)),
+                    Span::styled(" Update: ", Style::default().fg(app.theme.selection)),
                     Span::raw(note.text.clone()),
                 ])));
 
@@ -208,8 +211,8 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
 
         let noteinput = List::new(notespan)
         .block(Block::default().borders(Borders::ALL).title("Notes"))
-        .style(Style::default().fg(if app.edit_focus == EditItem::Notes {Color::Yellow} else {Color::White},))
-        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+        .style(Style::default().fg(if app.edit_focus == EditItem::Notes {app.theme.selection} else {app.theme.text},))
+        .highlight_style(Style::default().bg(app.theme.selection).fg(Color::Black));
 
 
 (input1, input2, input3, input4, noteinput)
@@ -219,11 +222,11 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
 pub fn render_notes_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>) {
     
     let input1 = Paragraph::new(app.input.as_ref())
-    .style(Style::default().fg(Color::Yellow))
+    .style(Style::default().fg(app.theme.selection))
     .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap { trim: true });
 
     let input2 = Paragraph::new(app.input.as_ref())
-    .style(Style::default().fg(Color::Yellow))
+    .style(Style::default().fg(app.theme.selection))
     .block(Block::default().borders(Borders::ALL).title("Input")).wrap(Wrap { trim: true });
 
     let messages: Vec<ListItem> = app
@@ -246,6 +249,9 @@ pub fn render_notes_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>)
 pub fn render_help_form<'a>(app: &'a mut AppState) -> Paragraph<'a> {
     
     let help = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Commands")]),
+        Spans::from(vec![Span::raw("Ctrl + k: Delete ticket (must be closed)")]),
+        Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::raw("Sorting")]),
         Spans::from(vec![Span::raw("F1: Sort by ID")]),
         Spans::from(vec![Span::raw("F2: Sort by Title")]),
@@ -256,7 +262,7 @@ pub fn render_help_form<'a>(app: &'a mut AppState) -> Paragraph<'a> {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
+            .style(Style::default().fg(app.theme.text))
             .title("Help")
             .border_type(BorderType::Plain),
     );

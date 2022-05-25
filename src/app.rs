@@ -4,7 +4,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen, EnterAlternateScreen}, execute,
 };
 use unicode_width::UnicodeWidthStr;
-use std::{io::{self, Write, Stdout}};
+use std::{io::{self, Write, Stdout}, sync::Arc};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -43,6 +43,7 @@ pub struct AppState {
     pub prompt: String,
     pub scroll: u16,
     pub sort_by: SortBy,
+    pub theme: Theme,
 }
 
 impl AppState {
@@ -63,6 +64,7 @@ impl AppState {
             prompt: "Enter Title".to_string(),
             scroll: 0,
             sort_by: SortBy::ID,
+            theme: Theme::gruvbox(),
         }
     }
 }
@@ -172,7 +174,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         .as_ref(),
                     )
                     .split(size);
-                
+
                 let openorclosed = match app.ticket_view_mode {
                     TicketViewMode::Open => "View Closed",
                     TicketViewMode::Closed => "View Open",
@@ -206,10 +208,10 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                             Span::styled(
                                 first,
                                 Style::default()
-                                    .fg(Color::Yellow)
+                                    .fg(app.theme.selection)
                                     .add_modifier(Modifier::UNDERLINED),
                             ),
-                            Span::styled(rest, Style::default().fg(Color::White)),
+                            Span::styled(rest, Style::default().fg(app.theme.text)),
                         ])
                     })
                     .collect();
@@ -218,7 +220,7 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                     .select(app.active_menu_item.into())
                     .block(Block::default().title(" Menu").borders(Borders::ALL))
                     .style(Style::default().fg(Color::White))
-                    .highlight_style(Style::default().fg(Color::Yellow))
+                    .highlight_style(Style::default().fg(app.theme.selection))
                     .divider(Span::raw("|"));
     
                 rect.render_widget(tabs, chunks[0]);
@@ -256,11 +258,12 @@ pub fn run(app: &mut AppState) -> Result<(), Box<dyn std::error::Error>> {
                         let chunks = Layout::default().direction(Direction::Vertical)
                             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref(),).split(chunks[1]);
                         let (input, output) = render_notes_form(app);
+                        
                         rect.render_widget(input, chunks[0]);
                         rect.render_widget(output, chunks[1]);
-                        if app.messages.len() < 1 {
-                        rect.set_cursor(chunks[0].x + app.input.width() as u16 + 1, chunks[0].y + 1,)  //Needs to be updated now that there are separate fields
-                        }
+                    
+                        //rect.set_cursor(chunks[0].x + app.input.width() as u16 + add_y, chunks[0].y + add_y,)
+                        
                     },
                     MenuItem::ConfirmForm => todo!(),
                     MenuItem::Help => {
