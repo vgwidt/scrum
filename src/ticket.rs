@@ -8,6 +8,7 @@ use crate::app::*;
 
 pub fn init_add_ticket(app: &mut AppState) -> Result<(), Error> {
 
+    //To indicate that it is a new ticket (referenced in add_ticket)
     app.edit_ticket.id = -7;
     app.edit_ticket.status = TicketStatus::Open;
     app.edit_ticket.title = String::new();
@@ -26,7 +27,7 @@ pub fn add_ticket (app: &mut AppState) -> Result<(), Error> {
     if let Some(selected) = app.ticket_list_state.selected() {
     //if new
 
-        //This can be fixed by using ticket priority enum with impl fn
+    //This can be fixed by using ticket priority enum with impl fn
         if app.edit_priority_state.selected() == Some(0) {
             app.edit_ticket.priority = "High".to_string();
         } else if app.edit_priority_state.selected() == Some(1) {
@@ -59,17 +60,25 @@ pub fn add_ticket (app: &mut AppState) -> Result<(), Error> {
     } else {
         app.edit_ticket.updated_at = Utc::now();
 
-        //Makes sure to update the right index by checking if on open or close page, very inefficient and requires blocking changing in other menus
+        //Makes sure to update the right index by checking if on open or close page
+        //very inefficient and requires blocking changing in other menus
         match app.ticket_view_mode {
             TicketViewMode::Open => {
                 app.open_tickets[selected] = app.edit_ticket.clone();
+                //If the ticket was changed to closed, reset index just in case it was last in list
+                if app.edit_ticket.status == TicketStatus::Closed {
+                    app.ticket_list_state.select(Some(0));
+                }
             },
             TicketViewMode::Closed => {
                 app.closed_tickets[selected] = app.edit_ticket.clone();
+                //If the ticket was changed to open, reset index just in case it was last in list
+                if app.edit_ticket.status == TicketStatus::Open {
+                    app.ticket_list_state.select(Some(0));
+                }
             },
         }    
     }
-
 
 
 
