@@ -146,6 +146,12 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
     //add notespan to text
     text.extend(notespan);
 
+    let mut wrap = Wrap::default();
+    wrap.scroll_callback = Some(Box::new(|text_area, lines| {
+        let len = lines.len() as u16;
+        (len.saturating_sub(text_area.height), 0)
+    }));
+
     let ticket_detail = Paragraph::new(text)
         .alignment(Alignment::Left)
         .block(
@@ -154,7 +160,7 @@ pub fn render_tickets<'a>(app: &AppState) -> (Table<'a>, Paragraph<'a>) {
                 .style(Style::default().fg(app.theme.text))
                 .title(" Ticket Detail")
                 .border_type(BorderType::Plain),
-        ).wrap(Wrap { trim: true }).scroll((app.scroll, 0));
+        ).wrap(wrap).scroll((app.scroll, 0));
 
     //calculate max scroll based on length of text
 
@@ -166,11 +172,11 @@ pub fn render_edit_form<'a>(app: &mut AppState) -> (Paragraph<'a>, Paragraph<'a>
     
     let input1 = Paragraph::new(app.edit_ticket.title.clone())
     .style(Style::default().fg(if app.edit_focus == EditItem::Title {app.theme.selection} else {app.theme.text},))
-    .block(Block::default().borders(Borders::ALL).title("Title")).wrap(Wrap { trim: true });
+    .block(Block::default().borders(Borders::ALL).title("Title")).wrap(Wrap::default());
 
     let input2 = Paragraph::new(app.edit_ticket.description.clone())
     .style(Style::default().fg(if app.edit_focus == EditItem::Description {app.theme.selection} else {app.theme.text},))
-    .block(Block::default().borders(Borders::ALL).title("Description")).wrap(Wrap { trim: true });
+    .block(Block::default().borders(Borders::ALL).title("Description")).wrap(Wrap::default());
 
     //Create ListItem for each priority
     let priorityrows = vec![
@@ -223,11 +229,11 @@ pub fn render_notes_form<'a>(app: &'a mut AppState) -> (Paragraph<'a>, List<'a>)
     
     let input1 = Paragraph::new(app.input.as_ref())
     .style(Style::default().fg(app.theme.selection))
-    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap { trim: true });
+    .block(Block::default().borders(Borders::ALL).title(app.prompt.clone())).wrap(Wrap::default());
 
     let input2 = Paragraph::new(app.input.as_ref())
     .style(Style::default().fg(app.theme.selection))
-    .block(Block::default().borders(Borders::ALL).title("Input")).wrap(Wrap { trim: true });
+    .block(Block::default().borders(Borders::ALL).title("Input")).wrap(Wrap::default());
 
     let messages: Vec<ListItem> = app
     .messages
